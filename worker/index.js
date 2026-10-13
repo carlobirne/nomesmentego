@@ -137,7 +137,7 @@ export async function gestisci(request, env, archivio = new ArchivioD1(env.DB)) 
       return new Response(JSON.stringify({
         name: nome, short_name: nome.slice(0, 12), lang: 'it',
         start_url: '/' + parti[1] + '/' + parti[2], scope: '/', display: 'standalone',
-        background_color: '#eef1ec', theme_color: '#1d3b2f',
+        background_color: '#efe6d2', theme_color: '#efe6d2',
         icons: [
           { src: '/icone/icona.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
           { src: '/icone/icona-192.png', sizes: '192x192', type: 'image/png' },

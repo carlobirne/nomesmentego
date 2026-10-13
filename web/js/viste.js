@@ -1,7 +1,8 @@
 // Le schermate dell'app (tranne l'editor di un promemoria, in editor.js).
 import { S, modifica, render, puoModificare, oggi } from './stato.js';
 import { api, recenti, dimentica } from './api.js';
-import { esc, attr, chip, toast, copia, condividi, scarica, caricaScript, testoSu, ICONE, COLORI } from './ui.js';
+import { esc, attr, chip, toast, copia, condividi, scarica, caricaScript, testoSu, COLORI } from './ui.js';
+import { icona, ICONE as DISEGNI, SCENE } from './disegni.js';
 import { normalizza, nuovoId } from '../core/modello.js';
 import { tuttiGliAvvisi, agenda, prossime, prossimaScadenza, segnaFatto, riassunto, settimanaDi, nomiVoci } from '../core/motore.js';
 import { generaICS } from '../core/ics.js';
@@ -10,8 +11,14 @@ import { piuGiorni, piuMesi, differenza, lunediDi, fmt, fmtAnno, fmtGiorno, fmtL
 
 /* ---------- utilità comuni ---------- */
 export const gruppoDi = (p) => S.dati.gruppi.find((g) => g.id === p.gruppo);
-export const iconaDi = (p) => p.icona || gruppoDi(p)?.icona || '🔔';
-const coloreDi = (p) => gruppoDi(p)?.colore || '#1d3b2f';
+export const iconaDi = (p) => p.icona || gruppoDi(p)?.icona || 'campanella';
+const coloreDi = (p) => gruppoDi(p)?.colore || '#1f4aa8';
+
+/** Fila di disegni tra cui scegliere. */
+export function sceltaIcone(attiva, act, extra = '') {
+  return '<div class="icone-pick" role="group" aria-label="Disegno">' + Object.entries(DISEGNI).map(([k, v]) =>
+    '<button data-act="' + act + '" data-v="' + k + '"' + extra + ' aria-pressed="' + (attiva === k) + '" aria-label="' + esc(v.nome) + '" title="' + esc(v.nome) + '">' + icona(k) + '</button>').join('') + '</div>';
+}
 const origine = () => location.origin;
 export const linkModifica = () => origine() + '/b/' + S.token;
 const tokenLettura = () => (S.permesso === 'modifica' ? S.lettura : S.token);
@@ -23,7 +30,7 @@ const linkGoogle = () => 'https://calendar.google.com/calendar/r?cid=' + encodeU
 function occorrenzaHTML(p, o, { senzaTitolo = false } = {}) {
   const voci = (o.voci || []).map((id) => p.voci.find((v) => v.id === id)).filter(Boolean);
   let h = '<div class="riga-occ' + (o.voci === null ? ' annullata' : '') + '">';
-  if (!senzaTitolo) h += '<span>' + esc(iconaDi(p)) + '</span><b>' + esc(p.titolo) + '</b>';
+  if (!senzaTitolo) h += icona(iconaDi(p), 'mini') + '<b>' + esc(p.titolo) + '</b>';
   h += voci.map((v) => chip(v.nome, v.colore)).join('') + '</div>';
   h += o.note.map((n) => '<div class="nota-ecc">' + esc(n) + '</div>').join('');
   return h;
@@ -31,7 +38,7 @@ function occorrenzaHTML(p, o, { senzaTitolo = false } = {}) {
 
 function avvisoHTML(a) {
   const p = S.dati.promemoria.find((x) => x.id === a.promemoria);
-  return '<div class="avviso"><div class="ora">' + esc(a.ora) + '</div><div><div class="testo">' + esc(iconaDi(p)) + ' ' + esc(a.testo) + '</div>' +
+  return '<div class="avviso"><div class="ora">' + esc(a.ora) + '</div><div><div class="testo">' + icona(iconaDi(p), 'mini') + '<span>' + esc(a.testo) + '</span></div>' +
     (a.occorrenza.voci?.length ? '<div class="chips" style="margin-top:6px">' + a.occorrenza.voci.map((id) => { const v = p.voci.find((x) => x.id === id); return v ? chip(v.nome, v.colore) : ''; }).join('') + '</div>' : '') +
     a.occorrenza.note.map((n) => '<div class="small" style="margin-top:4px">' + esc(n) + '</div>').join('') + '</div></div>';
 }
@@ -39,8 +46,9 @@ function avvisoHTML(a) {
 /* ---------- pagina iniziale (nessuna bacheca aperta) ---------- */
 export function vistaHome() {
   const r = recenti();
-  let h = '<section class="card"><h1>I promemoria di famiglia 🗓️</h1>' +
-    '<p>Spazzatura, mercato, scadenze dell\'auto, medicine, compleanni: li imposti una volta e arrivano da soli sul calendario del telefono, iPhone o Android.</p>' +
+  let h = '<section class="card intro">' + SCENE.home + '<h1 class="motto">par non desmentegarse de niente</h1>' +
+    '<p class="sottotitolo">Cosa, quando, ogni quanto?</p>' +
+    '<p>I giorni della settimana di mercato, pagare il bollo, portare fuori la spazzatura, le medicine…: li imposti una volta e arrivano da soli sul calendario del telefono.</p>' +
     '<p class="muted small">Niente account e niente password: ogni bacheca ha il suo link segreto. Chi ha il link la vede e la modifica dal browser.</p></section>';
   h += '<section class="card"><h2>Crea una bacheca</h2><div class="stack">' +
     '<label class="field">Come la chiamiamo?<input type="text" id="nomeNuova" class="grande" placeholder="es. Casa di mamma" maxlength="60"></label>' +
@@ -50,7 +58,7 @@ export function vistaHome() {
     h += '<section class="card"><h2>Le tue bacheche</h2><p class="muted small">Aperte di recente su questo telefono.</p><div class="stack">';
     for (const x of r) {
       h += '<div class="row"><a class="btn wide" style="flex:1;justify-content:flex-start" href="/' + (x.permesso === 'lettura' ? 'v' : 'b') + '/' + esc(x.token) + '">' +
-        (x.permesso === 'lettura' ? '👀 ' : '📋 ') + esc(x.nome) + '</a>' +
+        icona(x.permesso === 'lettura' ? 'occhio' : 'calendario', 'mini') + '<span>' + esc(x.nome) + (x.permesso === 'lettura' ? ' <span class="muted small">(sola lettura)</span>' : '') + '</span></a>' +
         '<button class="btn ghost piccolo" data-act="dimentica" data-token="' + esc(x.token) + '" aria-label="Togli ' + esc(x.nome) + ' da questo elenco">Togli</button></div>';
     }
     h += '</div></section>';
@@ -60,7 +68,7 @@ export function vistaHome() {
 }
 
 export function vistaErrore() {
-  return '<section class="card vuoto"><div class="ico">🔍</div><h2>Bacheca non trovata</h2><p>' + esc(S.errore || 'Il link non è valido.') +
+  return '<section class="card vuoto">' + SCENE.vuoto + '<h2>Bacheca non trovata</h2><p>' + esc(S.errore || 'Il link non è valido.') +
     '</p><p class="muted small">Se qualcuno ha cambiato il link della bacheca, chiedigli quello nuovo.</p><a class="btn primary" href="/">Vai alla pagina iniziale</a></section>';
 }
 
@@ -71,18 +79,18 @@ export function vistaOggi() {
   let nuova = null;
   try { nuova = sessionStorage.getItem('nms.nuova'); } catch { /* */ }
   if (nuova === S.token) {
-    h += '<section class="card notice attenzione"><h2>🎉 La bacheca è pronta!</h2><p><b>Il link di questa pagina è la chiave</b>: salvalo (per esempio mandalo a te stesso su WhatsApp) e aggiungi la pagina alla schermata Home.</p>' +
+    h += '<section class="card notice attenzione"><h2>La bacheca è pronta!</h2><p><b>Il link di questa pagina è la chiave</b>: salvalo (per esempio mandalo a te stesso su WhatsApp) e aggiungi la pagina alla schermata Home.</p>' +
       '<div class="row"><button class="btn primary" data-act="condividi" data-url="' + esc(linkModifica()) + '">Salva o manda il link</button><button class="btn" data-act="chiudi-benvenuto">Fatto</button></div></section>';
   }
   if (!d.promemoria.length) {
-    return h + '<section class="card vuoto"><div class="ico">📝</div><h2>Nessun promemoria, per ora</h2><p class="muted">Cominciamo dal primo: la spazzatura, il mercato, la revisione dell\'auto…</p>' +
+    return h + '<section class="card vuoto">' + SCENE.vuoto + '<h2>Nessun promemoria, per ora</h2><p class="muted">Cominciamo dal primo: la spazzatura, il mercato, la revisione dell\'auto…</p>' +
       (puoModificare() ? '<a class="btn primary big" href="#nuovo">Aggiungi un promemoria</a>' : '') + '</section>';
   }
   const avOggi = tuttiGliAvvisi(d, t, t), avDomani = tuttiGliAvvisi(d, dom, dom);
   const succede = agenda(d, t, t)[0]?.voci ?? [];
-  h += '<section class="card hero" aria-live="polite"><div class="label">Oggi, ' + esc(fmtLungo(t)) + '</div>';
+  h += '<section class="card hero" aria-live="polite">' + SCENE.oggi + '<div class="label">Oggi, ' + esc(fmtLungo(t)) + '</div>';
   if (avOggi.length) h += '<div class="grande">Da ricordare</div>' + avOggi.map(avvisoHTML).join('');
-  else h += '<div class="grande">' + (succede.length ? 'Oggi succede' : 'Niente da ricordare 🎉') + '</div>';
+  else h += '<div class="grande">' + (succede.length ? 'Oggi succede' : 'Niente da ricordare') + '</div>';
   if (succede.length) {
     h += (avOggi.length ? '<div class="label" style="margin-top:12px">Succede oggi</div>' : '') +
       succede.map(({ p, o }) => occorrenzaHTML(p, o)).join('');
@@ -121,10 +129,10 @@ function vistaScadenze(t) {
   let h = '<section class="card"><h2>Scadenze</h2>';
   for (const p of lista) {
     const q = p.quando;
-    h += '<div class="scadenza"><div class="grande-emoji" aria-hidden="true">' + esc(iconaDi(p)) + '</div><div class="info"><div class="titolo">' + esc(p.titolo) + '</div>' +
+    h += '<div class="scadenza">' + icona(iconaDi(p), 'medio') + '<div class="info"><div class="titolo">' + esc(p.titolo) + '</div>' +
       '<div class="small muted">Scade ' + esc(fmtAnno(q.scadenza)) + (q.ultimaVolta ? ' · fatto l\'ultima volta il ' + esc(fmtAnno(q.ultimaVolta)) : '') + '</div></div>' +
       badgeScadenza(t, q.scadenza) +
-      (puoModificare() && S.ui.fatto !== p.id ? '<button class="btn piccolo" data-act="fatto-apri" data-id="' + esc(p.id) + '">Fatto ✔</button>' : '');
+      (puoModificare() && S.ui.fatto !== p.id ? '<button class="btn piccolo" data-act="fatto-apri" data-id="' + esc(p.id) + '">Fatto</button>' : '');
     if (S.ui.fatto === p.id) {
       const il = S.ui.fattoIl || t;
       const prossima = S.ui.fattoProssima || prossimaScadenza(q, il) || '';
@@ -142,19 +150,19 @@ function vistaScadenze(t) {
 /* ---------- elenco promemoria ---------- */
 export function vistaPromemoria() {
   const d = S.dati, t = oggi();
-  let h = puoModificare() ? '<a class="btn primary big wide" href="#nuovo">＋ Aggiungi un promemoria</a>' : '';
-  if (!d.promemoria.length) return h + '<section class="card vuoto"><div class="ico">📭</div><p class="muted">Ancora nessun promemoria.</p></section>';
+  let h = puoModificare() ? '<a class="btn primary big wide" href="#nuovo">+ Aggiungi un promemoria</a>' : '';
+  if (!d.promemoria.length) return h + '<section class="card vuoto">' + SCENE.vuoto + '<p class="muted">Ancora nessun promemoria.</p></section>';
   const gruppi = [...d.gruppi.map((g) => ({ g, lista: d.promemoria.filter((p) => p.gruppo === g.id) })),
     { g: null, lista: d.promemoria.filter((p) => !p.gruppo) }].filter((x) => x.lista.length);
   for (const { g, lista } of gruppi) {
-    if (gruppi.length > 1 || g) h += '<div class="gruppo-titolo">' + (g ? esc(g.icona) + ' ' + esc(g.nome) : 'Altri') + '</div>';
+    if (gruppi.length > 1 || g) h += '<div class="gruppo-titolo">' + (g ? icona(g.icona, 'mini') + esc(g.nome) : 'Altri') + '</div>';
     for (const p of lista) {
       const pr = prossime(p, t, 1)[0];
       let extra = '';
-      if (p.pausa) extra = '⏸ In pausa';
+      if (p.pausa) extra = 'In pausa';
       else if (p.quando.tipo === 'rotazione' && p.quando.settimane.length > 1) extra = 'Questa settimana: ' + p.quando.settimane[settimanaDi(p.quando, t)].nome;
       if (!p.pausa && pr && p.quando.tipo !== 'scadenza') extra += (extra ? ' · ' : '') + 'Prossima volta: ' + fmtGiorno(pr.data) + (pr.voci.length ? ' (' + nomiVoci(p, pr.voci).join(', ') + ')' : '');
-      h += '<a class="prom' + (p.pausa ? ' pausa' : '') + '" href="#modifica/' + esc(p.id) + '"><span class="ico" aria-hidden="true">' + esc(iconaDi(p)) + '</span><span class="corpo">' +
+      h += '<a class="prom' + (p.pausa ? ' pausa' : '') + '" href="#modifica/' + esc(p.id) + '">' + icona(iconaDi(p), 'medio') + '<span class="corpo">' +
         '<span class="titolo">' + esc(p.titolo) + '</span><br><span class="descr">' + esc(riassunto(p)) + '</span>' +
         (extra ? '<br><span class="descr"><b>' + esc(extra) + '</b></span>' : '') + '</span></a>';
     }
@@ -165,16 +173,16 @@ export function vistaPromemoria() {
 /* ---------- nuovo promemoria: scelta del modello ---------- */
 export function vistaNuovo() {
   return '<section class="card"><h2>Cosa vuoi ricordare?</h2><p class="muted small">Scegli la cosa più simile: dopo puoi cambiare tutto.</p><div class="modelli">' +
-    MODELLI.map((m) => '<button data-act="usa-modello" data-id="' + m.id + '"><span class="ico">' + m.icona + '</span><b>' + esc(m.nome) + '</b><span>' + esc(m.descrizione) + '</span></button>').join('') +
-    '</div></section><a class="btn ghost" href="#promemoria">← Indietro</a>';
+    MODELLI.map((m) => '<button data-act="usa-modello" data-id="' + m.id + '">' + icona(m.icona, 'grande') + '<b>' + esc(m.nome) + '</b><span>' + esc(m.descrizione) + '</span></button>').join('') +
+    '</div></section><a class="btn ghost" href="#promemoria">Indietro</a>';
 }
 
 /* ---------- modello Auto ---------- */
 export function vistaAuto() {
-  const a = S.ui.auto ??= { nome: '', icona: '🚗', scadenze: {}, preavviso: 20, immatricolazione: '' };
+  const a = S.ui.auto ??= { nome: '', icona: 'auto', colore: COLORI[0], scadenze: {}, preavviso: 20, immatricolazione: '' };
   let h = '<section class="card"><div class="passo"><span class="n">1</span><h2>Quale auto?</h2></div>' +
     '<label class="field">Nome o modello<input type="text" class="grande" data-bind="auto-nome" value="' + esc(a.nome) + '" placeholder="es. Panda"></label>' +
-    '<div class="emoji-pick" style="margin-top:10px" role="group" aria-label="Icona">' + ['🚗', '🚙', '🛻', '🚐', '🏍️', '🛵'].map((e) => '<button data-act="auto-icona" data-v="' + e + '" aria-pressed="' + (a.icona === e) + '">' + e + '</button>').join('') + '</div></section>';
+    '<div class="small" style="font-weight:700;margin:12px 0 6px">Colore</div><div class="colori-pick" role="group" aria-label="Colore">' + COLORI.slice(0, 8).map((c) => '<button data-act="auto-colore" data-v="' + c + '" aria-pressed="' + (a.colore === c) + '" style="background:' + c + '" aria-label="Colore ' + c + '"></button>').join('') + '</div></section>';
   h += '<section class="card"><div class="passo"><span class="n">2</span><h2>Le scadenze</h2></div><p class="muted small">Copiale dai documenti. Se una non la sai, lasciala vuota: potrai aggiungerla dopo.</p>';
   h += '<div class="notice small" style="margin-bottom:10px"><label class="field">Data di immatricolazione (facoltativa)<span class="aiuto">Se l\'auto ha meno di 4 anni calcolo io la prima revisione.</span><input type="date" data-bind="auto-immatricolazione" value="' + esc(a.immatricolazione) + '"></label></div>';
   for (const v of VOCI_AUTO) {
@@ -196,7 +204,7 @@ export function vistaCalendario() {
   const rot = d.promemoria.find((p) => p.quando.tipo === 'rotazione' && p.quando.settimane.length > 1 && !p.pausa);
   let h = '<section class="card no-print"><h2>Schema delle prossime settimane</h2><p class="muted small">Utile da stampare e attaccare al frigo.</p><div class="row">' +
     '<label class="field stretto">Settimane<select data-bind="schema-settimane">' + [2, 4, 6, 8].map((x) => '<option' + (x === n ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></label>' +
-    '<span class="spazio"></span><button class="btn" data-act="stampa">🖨️ Stampa</button></div></section>';
+    '<span class="spazio"></span><button class="btn" data-act="stampa">Stampa</button></div></section>';
   h += '<section class="card"><h2 class="stampa-titolo">' + esc(d.nome) + '</h2><div class="schema-wrap"><table class="schema"><thead><tr>' +
     GIORNI.map((g) => '<th scope="col">' + g + '</th>').join('') + '</tr></thead><tbody>';
   for (let w = 0; w < n; w++) {
@@ -213,7 +221,7 @@ export function vistaCalendario() {
           h += o.voci.map((id) => { const v = p.voci.find((x) => x.id === id); return v ? '<span class="ev" style="background:' + v.colore + ';color:' + testoSu(v.colore) + '">' + esc(v.nome) + '</span>' : ''; }).join('');
         } else {
           const c = coloreDi(p);
-          h += '<span class="ev" style="background:' + c + ';color:' + testoSu(c) + '">' + esc(iconaDi(p) + ' ' + p.titolo) + '</span>';
+          h += '<span class="ev" style="background:' + c + ';color:' + testoSu(c) + '">' + esc(p.titolo) + '</span>';
         }
       }
       h += '</td>';
@@ -230,25 +238,25 @@ export function vistaCalendario() {
 export function vistaCondividi() {
   const d = S.dati;
   const mod = S.permesso === 'modifica';
-  let h = '<section class="card"><h2>📅 Gli avvisi sul telefono</h2>' +
+  let h = '<section class="card"><h2>' + icona('calendario', 'titolo') + 'Gli avvisi sul telefono</h2>' +
     '<p>Aggiungi la bacheca al calendario del telefono <b>una volta sola</b>: da lì in poi gli avvisi arrivano come quelli degli appuntamenti, e le modifiche fatte qui si aggiornano da sole.</p>' +
     '<div class="stack">' +
-    '<a class="btn primary big" href="' + esc(linkWebcal()) + '">🍎 iPhone o iPad</a>' +
-    '<a class="btn primary big" href="' + esc(linkGoogle()) + '" target="_blank" rel="noopener">🤖 Android (Google Calendar)</a>' +
+    '<a class="btn primary big" href="' + esc(linkWebcal()) + '">Apple Calendar</a>' +
+    '<a class="btn primary big" href="' + esc(linkGoogle()) + '" target="_blank" rel="noopener">Google Calendar</a>' +
     '<button class="btn" data-act="copia" data-testo="' + esc(linkFeed()) + '">Copia l\'indirizzo per un altro calendario</button></div>' +
     '<details class="altro"><summary>Come funziona, passo per passo</summary>' +
-    '<h3 style="margin-top:8px">iPhone</h3><ol class="passi-guida"><li>Tocca <b>iPhone o iPad</b> e conferma con <b>Iscriviti</b>.</li><li>Controlla che "Rimuovi avvisi" sia <b>disattivato</b>, poi tocca <b>Aggiungi</b>.</li></ol>' +
-    '<h3>Android</h3><ol class="passi-guida"><li>Tocca <b>Android</b>: si apre Google Calendar nel browser, entra con il tuo account Google e conferma <b>Aggiungi</b>.</li>' +
-    '<li>Nell\'app Google Calendar apri il menu ☰ › Impostazioni, scegli il calendario "' + esc(d.nome) + '" e attiva <b>Sincronizza</b>.</li>' +
+    '<h3 style="margin-top:8px">Apple Calendar (iPhone, iPad, Mac)</h3><ol class="passi-guida"><li>Tocca <b>Apple Calendar</b> e conferma con <b>Iscriviti</b>.</li><li>Controlla che "Rimuovi avvisi" sia <b>disattivato</b>, poi tocca <b>Aggiungi</b>.</li></ol>' +
+    '<h3>Google Calendar (Android e computer)</h3><ol class="passi-guida"><li>Tocca <b>Google Calendar</b>: si apre nel browser, entra con il tuo account Google e conferma <b>Aggiungi</b>.</li>' +
+    '<li>Nell\'app Google Calendar apri il menu › Impostazioni, scegli il calendario "' + esc(d.nome) + '" e attiva <b>Sincronizza</b>.</li>' +
     '<li>Sempre lì, in <b>Notifiche predefinite</b>, scegli "All\'inizio dell\'evento" (0 minuti): gli eventi sono già all\'ora dell\'avviso.</li></ol>' +
     '<p class="small muted">Google aggiorna i calendari esterni ogni qualche ora: una modifica fatta adesso può arrivare sul telefono con un po\' di ritardo. Su Android l\'app gratuita <b>ICSx⁵</b> (incolla l\'indirizzo copiato) aggiorna più spesso.</p>' +
     '<p class="small muted">Non vuoi abbonarti? <button class="btn ghost piccolo" data-act="ics-scarica">Scarica un file .ics</button> con i prossimi 6 mesi (non si aggiorna da solo).</p></details></section>';
 
-  h += '<section class="card"><h2>📱 Sulla schermata Home</h2><p>Così apri la bacheca come un\'app.</p><ul class="passi-guida">' +
-    '<li><b>iPhone</b> (Safari): tocca Condividi <span aria-hidden="true">⎋</span> › <b>Aggiungi alla schermata Home</b>.</li>' +
-    '<li><b>Android</b> (Chrome): menu ⋮ › <b>Aggiungi a schermata Home</b> (o "Installa app").</li></ul></section>';
+  h += '<section class="card"><h2>' + icona('casa', 'titolo') + 'Sulla schermata Home</h2><p>Così apri la bacheca come un\'app.</p><ul class="passi-guida">' +
+    '<li><b>iPhone</b> (Safari): tocca Condividi › <b>Aggiungi alla schermata Home</b>.</li>' +
+    '<li><b>Android</b> (Chrome): menu con i tre puntini › <b>Aggiungi a schermata Home</b> (o "Installa app").</li></ul></section>';
 
-  h += '<section class="card"><h2>👨‍👩‍👧 Condividi con la famiglia</h2>';
+  h += '<section class="card"><h2>' + icona('uccello', 'titolo') + 'Condividi con la famiglia</h2>';
   if (mod) {
     h += '<h3>Link per modificare</h3><p class="small muted">Chi lo ha può vedere e <b>cambiare</b> tutto: mandalo solo a chi ti fidi.</p>' +
       '<div class="row"><input class="copia" type="text" readonly value="' + esc(linkModifica()) + '" aria-label="Link per modificare" style="flex:1 1 220px"><button class="btn" data-act="condividi" data-url="' + esc(linkModifica()) + '">Manda</button></div>' +
@@ -261,17 +269,18 @@ export function vistaCondividi() {
   h += '</section>';
   if (!mod) return h;
 
-  h += '<section class="card"><h2>⚙️ Impostazioni</h2><label class="field">Nome della bacheca<input type="text" data-bind="nome-bacheca" value="' + esc(d.nome) + '" maxlength="60"></label>' +
+  h += '<section class="card"><h2>' + icona('stella', 'titolo') + 'Impostazioni</h2><label class="field">Nome della bacheca<input type="text" data-bind="nome-bacheca" value="' + esc(d.nome) + '" maxlength="60"></label>' +
     '<h3 style="margin-top:16px">Gruppi</h3><p class="small muted">Per raccogliere i promemoria: un\'auto, la casa, una persona…</p>';
   d.gruppi.forEach((g, i) => {
     h += '<div class="riga-ed"><input type="color" data-bind="gruppo-colore" data-i="' + i + '" value="' + g.colore + '" aria-label="Colore di ' + esc(g.nome) + '">' +
-      '<label class="field stretto">Icona<select data-bind="gruppo-icona" data-i="' + i + '">' + [...new Set([g.icona, ...ICONE])].filter(Boolean).map((e) => '<option' + (e === g.icona ? ' selected' : '') + '>' + esc(e) + '</option>').join('') + '</select></label>' +
+      '<button class="btn piccolo icona-gruppo" data-act="gruppo-icone" data-i="' + i + '" aria-label="Cambia disegno">' + icona(g.icona, 'mini') + '</button>' +
       '<label class="field">Nome<input type="text" data-bind="gruppo-nome" data-i="' + i + '" value="' + esc(g.nome) + '"></label>' +
-      (S.ui.conferma === 'g' + g.id ? '<button class="btn danger" data-act="gruppo-del-ok" data-i="' + i + '">Conferma</button>' : '<button class="btn danger" data-act="gruppo-del" data-i="' + i + '">Elimina</button>') + '</div>';
+      (S.ui.conferma === 'g' + g.id ? '<button class="btn danger" data-act="gruppo-del-ok" data-i="' + i + '">Conferma</button>' : '<button class="btn danger" data-act="gruppo-del" data-i="' + i + '">Elimina</button>') + '</div>' +
+      (S.ui.iconeGruppo === i ? sceltaIcone(g.icona, 'gruppo-icona', ' data-i="' + i + '"') : '');
   });
-  h += '<button class="btn" data-act="gruppo-add" style="margin-top:8px">＋ Nuovo gruppo</button></section>';
+  h += '<button class="btn" data-act="gruppo-add" style="margin-top:8px">+ Nuovo gruppo</button></section>';
 
-  h += '<section class="card"><h2>🛟 Copie di sicurezza</h2><p class="small muted">Il server tiene da solo le ultime versioni: se qualcosa è andato storto puoi tornare indietro.</p>';
+  h += '<section class="card"><h2>' + icona('luna', 'titolo') + 'Copie di sicurezza</h2><p class="small muted">Il server tiene da solo le ultime versioni: se qualcosa è andato storto puoi tornare indietro.</p>';
   if (!S.ui.copie) h += '<button class="btn" data-act="storico">Mostra le versioni precedenti</button>';
   else if (!S.ui.copie.length) h += '<p class="muted">Ancora nessuna copia: si crea da sola quando modifichi la bacheca.</p>';
   else {
@@ -281,7 +290,7 @@ export function vistaCondividi() {
   h += '<div class="row" style="margin-top:12px"><button class="btn" data-act="backup">Scarica una copia (file)</button><button class="btn" data-act="importa">Importa da file</button></div>' +
     '<p class="small muted" style="margin:8px 0 0">L\'importazione <b>aggiunge</b> i promemoria del file a quelli che ci sono. Va bene anche il file .yaml della vecchia app "Raccolta rifiuti".</p></section>';
 
-  h += '<section class="card"><h2>🔒 Cambia i link</h2><p class="small muted">Se un link è finito nelle mani sbagliate, cambialo: quello vecchio smette di funzionare. Poi rimanda quello nuovo a chi serve (per il calendario: va riaggiunto sui telefoni).</p><div class="row">' +
+  h += '<section class="card"><h2>' + icona('occhio', 'titolo') + 'Cambia i link</h2><p class="small muted">Se un link è finito nelle mani sbagliate, cambialo: quello vecchio smette di funzionare. Poi rimanda quello nuovo a chi serve (per il calendario: va riaggiunto sui telefoni).</p><div class="row">' +
     (S.ui.conferma === 'rig-modifica' ? '<button class="btn danger" data-act="rigenera-ok" data-quale="modifica">Conferma: cambia il link per modificare</button>' : '<button class="btn danger" data-act="rigenera" data-quale="modifica">Cambia il link per modificare</button>') +
     (S.ui.conferma === 'rig-lettura' ? '<button class="btn danger" data-act="rigenera-ok" data-quale="lettura">Conferma: cambia sola lettura e calendario</button>' : '<button class="btn danger" data-act="rigenera" data-quale="lettura">Cambia sola lettura e calendario</button>') +
     '</div></section>';
@@ -324,11 +333,11 @@ export const AZIONI = {
     S.bozzaNuova = true;
     location.hash = '#modifica/' + S.bozza.id;
   },
-  'auto-icona'(el) { S.ui.auto.icona = el.dataset.v; render(); },
+  'auto-colore'(el) { S.ui.auto.colore = el.dataset.v; render(); },
   'auto-crea'() {
     const a = S.ui.auto;
     if (!a.nome.trim()) { toast('Scrivi il nome dell\'auto.'); return; }
-    const { gruppo, promemoria } = creaAuto({ nome: a.nome.trim(), icona: a.icona, scadenze: a.scadenze, preavviso: a.preavviso });
+    const { gruppo, promemoria } = creaAuto({ nome: a.nome.trim(), icona: 'auto', colore: a.colore, scadenze: a.scadenze, preavviso: a.preavviso });
     if (!promemoria.length) { toast('Inserisci almeno una scadenza.'); return; }
     modifica((d) => { d.gruppi.push(gruppo); d.promemoria.push(...promemoria); }, { subito: true });
     S.ui.auto = null;
@@ -371,8 +380,10 @@ export const AZIONI = {
     } catch (e) { toast(e.message); }
   },
   'gruppo-add'() {
-    modifica((d) => d.gruppi.push({ id: nuovoId('g'), nome: 'Nuovo gruppo', icona: '🏠', colore: COLORI[d.gruppi.length % COLORI.length] }));
+    modifica((d) => d.gruppi.push({ id: nuovoId('g'), nome: 'Nuovo gruppo', icona: 'casa', colore: COLORI[d.gruppi.length % COLORI.length] }));
   },
+  'gruppo-icone'(el) { S.ui.iconeGruppo = S.ui.iconeGruppo === +el.dataset.i ? null : +el.dataset.i; render(); },
+  'gruppo-icona'(el) { S.ui.iconeGruppo = null; modifica((d) => { d.gruppi[+el.dataset.i].icona = el.dataset.v; }); },
   'gruppo-del'(el) { S.ui.conferma = 'g' + S.dati.gruppi[+el.dataset.i].id; render(); },
   'gruppo-del-ok'(el) { S.ui.conferma = null; modifica((d) => d.gruppi.splice(+el.dataset.i, 1)); toast('Gruppo eliminato (i promemoria restano).'); },
 };
@@ -401,7 +412,6 @@ export const LEGAMI = {
   },
   'nome-bacheca'(el, evento) { if (evento === 'change') modifica((d) => { d.nome = el.value; }); },
   'gruppo-nome'(el, evento) { if (evento === 'change') modifica((d) => { d.gruppi[+el.dataset.i].nome = el.value; }); },
-  'gruppo-icona'(el) { modifica((d) => { d.gruppi[+el.dataset.i].icona = el.value; }); },
   'gruppo-colore'(el, evento) { if (evento === 'change') modifica((d) => { d.gruppi[+el.dataset.i].colore = el.value; }); },
 };
 

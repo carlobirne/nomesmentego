@@ -27,9 +27,9 @@ function leggiHash() {
 function ridisegna() {
   const vista = $('#vista');
   const schede = $('#schede');
-  const titolo = $('#titolo');
+  const titolo = $('#titolo'), titoloLink = $('#titoloLink');
   if (!m) {
-    titolo.textContent = 'Nomesmentego'; titolo.href = '/';
+    titolo.textContent = 'Nomesmentego'; titoloLink.href = '/';
     schede.classList.add('hidden');
     vista.innerHTML = vistaHome();
     return;
@@ -40,7 +40,7 @@ function ridisegna() {
     return;
   }
   if (S.vista === 'modifica' && !S.bozza) leggiHash();
-  titolo.textContent = S.dati.nome; titolo.href = '#oggi';
+  titolo.textContent = S.dati.nome; titoloLink.href = '#oggi';
   document.title = S.dati.nome + ' · Promemoria';
   schede.classList.remove('hidden');
   const attiva = SCHEDA_DI[S.vista] || S.vista;

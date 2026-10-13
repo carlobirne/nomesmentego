@@ -185,7 +185,7 @@ export function avvisi(p, da, a) {
       out.push({
         id: p.id + '-' + s + '-insisti-' + k, promemoria: p.id, data: quando, ora,
         occorrenza: { data: s, voci: [], note: [], cambiata: false },
-        testo: '⚠️ Scaduto da ' + k + ' giorni: ' + p.titolo + ' (segna "Fatto" nell\'app)', scaduto: true,
+        testo: 'Scaduto da ' + k + ' giorni: ' + p.titolo + ' (segna "Fatto" nell\'app)', scaduto: true,
       });
     }
   }

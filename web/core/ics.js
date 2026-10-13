@@ -49,8 +49,7 @@ export function generaICS(bacheca, { da, a, adesso = new Date(), link = '' } = {
   let n = 0;
   for (const av of tuttiGliAvvisi(bacheca, da, a)) {
     const p = bacheca.promemoria.find((x) => x.id === av.promemoria);
-    const icona = p.icona || bacheca.gruppi.find((g) => g.id === p.gruppo)?.icona || '';
-    const titolo = (icona ? icona + ' ' : '') + av.testo;
+    const titolo = av.testo;
     evento(av.id, [
       'DTSTART:' + dt(av.data, av.ora), 'DTEND:' + piuMinuti(av.data, av.ora, 15),
       'SUMMARY:' + escapeICS(titolo),
@@ -68,7 +67,7 @@ export function generaICS(bacheca, { da, a, adesso = new Date(), link = '' } = {
       const voci = o.voci.map((id) => p.voci.find((v) => v.id === id)?.nome).filter(Boolean).join(', ');
       evento(p.id + '-' + o.data + '-giorno', [
         'DTSTART;VALUE=DATE:' + o.data.replaceAll('-', ''), 'DTEND;VALUE=DATE:' + piuGiorni(o.data, 1).replaceAll('-', ''),
-        'SUMMARY:' + escapeICS((p.icona ? p.icona + ' ' : '') + p.titolo + (voci ? ': ' + voci : '')),
+        'SUMMARY:' + escapeICS(p.titolo + (voci ? ': ' + voci : '')),
         'DESCRIPTION:' + descrizione(p, o.note),
         'TRANSP:TRANSPARENT',
       ]);

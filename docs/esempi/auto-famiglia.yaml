@@ -11,8 +11,8 @@ persone:
   - { id: persona3, nome: Persona 3, email: persona3@example.com }
 
 gruppi:
-  - { id: puma,   nome: Puma,   icona: "🚗", colore: "#22579a" }
-  - { id: passat, nome: Passat, icona: "🚙", colore: "#3e7d3a" }
+  - { id: puma,   nome: Puma,   icona: auto, colore: "#22579a" }
+  - { id: passat, nome: Passat, icona: auto, colore: "#3e7d3a" }
 
 # Ogni scadenza: avviso 20 giorni prima (come nel foglio), 7 giorni prima e il giorno stesso;
 # se passa senza "Fatto" ricorda ogni 3 giorni. "da": la prossima scadenza si conta

@@ -77,11 +77,11 @@ export function aggiornaIndicatore() {
   const el = document.getElementById('statoSalvataggio');
   if (!el) return;
   const testi = {
-    ok: S.permesso === 'lettura' ? '👀 Sola lettura' : '✓ Salvato',
+    ok: S.permesso === 'lettura' ? 'Sola lettura' : 'Salvato',
     attesa: 'Salvataggio…', invio: 'Salvataggio…',
-    errore: '⚠ Non salvato, riprovo…', offline: '⚠ Senza connessione, riprovo…',
+    errore: 'Non salvato, riprovo…', offline: 'Senza connessione, riprovo…',
   };
-  el.textContent = S.token ? (S.offline ? '⚠ Offline: ultima versione salvata' : testi[S.salvataggio]) : '';
+  el.textContent = S.token ? (S.offline ? 'Offline: ultima versione salvata' : testi[S.salvataggio]) : '';
   el.classList.toggle('errore', S.offline || S.salvataggio === 'errore' || S.salvataggio === 'offline');
 }
 
