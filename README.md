@@ -7,10 +7,13 @@ scadenze dell'auto, medicine, compleanni. Si configura dal browser e gli avvisi 
 - Ogni **bacheca** (es. "Casa di mamma") ha un **link segreto**: chi lo apre la vede e la modifica dal browser.
   C'è anche un link di **sola lettura**.
 - Promemoria **una volta**, **ogni giorno**, **ogni settimana**, **a settimane alterne / a rotazione** (con le voci,
-  es. i tipi di rifiuto), **ogni mese**, **ogni anno**, **scadenze** con preavvisi e pulsante **Fatto ✔**.
+  es. i tipi di rifiuto), **ogni mese**, **ogni anno**, **scadenze** con preavvisi e pulsante **Fatto**.
 - **Giorni speciali**: festività, recuperi, un giorno in più o in meno.
 - **Calendario in abbonamento**: un tocco per aggiungerlo a Calendario di iPhone o Google Calendar; le modifiche
   si aggiornano da sole.
+- **Avvisi su Telegram**: un bot manda i promemoria in chat (anche in un gruppo di famiglia), all'ora di ogni avviso,
+  con il tasto **Fatto** per le scadenze; per ogni chat si scelgono i gruppi da ricevere (es. la Passat a tre persone,
+  la Puma a una sola).
 - **Schema stampabile** delle prossime settimane, **copie di sicurezza** automatiche, import della vecchia app
   "Raccolta rifiuti" e del foglio dell'auto (vedi [`docs/esempi/auto-famiglia.yaml`](docs/esempi/auto-famiglia.yaml)).
 
@@ -52,6 +55,22 @@ Il codice è pubblicato in automatico da GitHub a ogni modifica del branch `main
 Poi apri l'indirizzo, crea la bacheca, aggiungi i promemoria e, nella scheda **Telefono e condivisione**:
 aggiungi il calendario al telefono e manda il link a chi serve.
 
+## Avvisi su Telegram (facoltativo, ~5 minuti)
+
+1. Su Telegram apri **@BotFather**, scrivi `/newbot`, scegli un nome (es. "Promemoria di famiglia") e un nome
+   utente che finisca in `bot` (es. `nomesmentego_carlo_bot`). BotFather ti risponde con un **token**
+   del tipo `123456:ABC-...`: è la chiave del bot, non condividerla.
+2. Su GitHub aggiungi il segreto `TELEGRAM_BOT_TOKEN` con quel token (come al punto 4 sopra).
+3. Rilancia il workflow (*Actions › Test e pubblicazione › Run workflow*). Il passo **Bot Telegram** carica il token
+   su Cloudflare, registra il webhook e i comandi del bot; nel riepilogo compare il nome del bot.
+4. Nell'app, scheda **Telefono e condivisione › Avvisi su Telegram**: **Collega la mia chat Telegram** apre il bot,
+   tocca **Avvia** e torna nell'app. Per un gruppo: **Collega un gruppo Telegram** e scegli il gruppo.
+
+Come funziona: ogni 5 minuti un *Cron Trigger* del Worker calcola gli avvisi scattati dall'ultimo giro (nell'ora
+locale della bacheca) e li manda alle chat collegate. Il tasto **Fatto** compare solo nelle chat collegate da chi
+ha il link di modifica. Se una chat blocca il bot o lo toglie dal gruppo, viene scollegata da sola.
+Comandi del bot: `/oggi` (cosa c'è oggi) e `/stop` (smetti di ricevere).
+
 ## Sviluppo in locale
 
 Serve Node.js 20 o successivo.
@@ -81,6 +100,7 @@ web/                 l'app, servita così com'è (niente build)
     editor.js          editor guidato di un promemoria
   css/app.css        stile chiaro/scuro + stampa
 worker/              Cloudflare Worker: API, feed /feed/<token>.ics, manifest per la schermata Home
+  telegram.js          bot Telegram: collegamento delle chat, comandi, tasto "Fatto", invio periodico
 migrations/          tabelle del database D1
 test/                node --test
 docs/                proposta ed esempi
@@ -97,11 +117,16 @@ prototipo/           la vecchia app "Raccolta rifiuti" da cui siamo partiti
 | `GET` | `/api/b/<token>/storico[/<versione>]` | copie di sicurezza |
 | `POST` | `/api/b/<token>/rigenera` | cambia il link di `modifica` o di `lettura` |
 | `GET` | `/feed/<token-lettura>.ics` | calendario in abbonamento (da 7 giorni fa a 13 mesi avanti) |
+| `GET` | `/api/b/<token>/telegram` | stato del bot e chat collegate (solo chi può modificare) |
+| `POST` | `/api/b/<token>/telegram/collega` | codice usa-e-getta (vale un'ora) → link `t.me/<bot>?start=…` |
+| `PUT`/`DELETE` | `/api/b/<token>/telegram/<chat>` | gruppi ricevuti dalla chat (`{filtro}`), oppure scollega |
+| `POST` | `/api/b/<token>/telegram/prova` | messaggio di prova a tutte le chat |
+| `POST` | `/telegram/webhook` | aggiornamenti da Telegram (verificati con il segreto derivato dal token) |
 
 Il link di modifica è salvato nel database solo come impronta SHA-256. Il server normalizza ogni bacheca
 con lo stesso codice dell'app (`web/core/modello.js`), quindi non accetta dati malformati.
 
 ## Prossimi passi
 
-Fase 3 della proposta: **email** e **Telegram**. Il modello ha già `persone` e `destinatari`; servirà un
-*Cron Trigger* del Worker che ogni pochi minuti calcola gli avvisi in scadenza con `tuttiGliAvvisi()` e li manda.
+**Email**: stesso giro periodico di Telegram (`inviaAvvisi` in `worker/telegram.js`), con un servizio di invio
+(es. Cloudflare Email o un provider SMTP via API) e gli indirizzi delle `persone` del modello.
