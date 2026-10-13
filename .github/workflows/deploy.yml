@@ -31,6 +31,10 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    # il link dell'app compare in alto nella pagina dell'esecuzione e in "Deployments" del repository
+    environment:
+      name: produzione
+      url: ${{ steps.pubblica.outputs.url }}
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -46,7 +50,16 @@ jobs:
       - name: Aggiorna le tabelle
         run: npx wrangler d1 migrations apply DB --remote
       - name: Pubblica
-        run: npx wrangler deploy
+        id: pubblica
+        run: |
+          npx wrangler deploy | tee deploy.log
+          URL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -n 1)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          {
+            echo "## ✅ App pubblicata"
+            echo ""
+            echo "Apri: **$URL**"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Codice di invito
         env:
           CODICE_INVITO: ${{ secrets.CODICE_INVITO }}
