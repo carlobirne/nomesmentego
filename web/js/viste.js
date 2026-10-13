@@ -243,13 +243,17 @@ export function vistaCondividi() {
     '<div class="stack">' +
     '<a class="btn primary big" href="' + esc(linkWebcal()) + '">Apple Calendar</a>' +
     '<a class="btn primary big" href="' + esc(linkGoogle()) + '" target="_blank" rel="noopener">Google Calendar</a>' +
+    '<p class="small muted" style="margin:-4px 0 0">Da telefono Android, se dopo l\'aggiunta non vedi gli eventi, segui "Come funziona, passo per passo" qui sotto.</p>' +
     '<button class="btn" data-act="copia" data-testo="' + esc(linkFeed()) + '">Copia l\'indirizzo per un altro calendario</button></div>' +
     '<details class="altro"><summary>Come funziona, passo per passo</summary>' +
     '<h3 style="margin-top:8px">Apple Calendar (iPhone, iPad, Mac)</h3><ol class="passi-guida"><li>Tocca <b>Apple Calendar</b> e conferma con <b>Iscriviti</b>.</li><li>Controlla che "Rimuovi avvisi" sia <b>disattivato</b>, poi tocca <b>Aggiungi</b>.</li></ol>' +
-    '<h3>Google Calendar (Android e computer)</h3><ol class="passi-guida"><li>Tocca <b>Google Calendar</b>: si apre nel browser, entra con il tuo account Google e conferma <b>Aggiungi</b>.</li>' +
-    '<li>Nell\'app Google Calendar apri il menu › Impostazioni, scegli il calendario "' + esc(d.nome) + '" e attiva <b>Sincronizza</b>.</li>' +
-    '<li>Sempre lì, in <b>Notifiche predefinite</b>, scegli "All\'inizio dell\'evento" (0 minuti): gli eventi sono già all\'ora dell\'avviso.</li></ol>' +
-    '<p class="small muted">Google aggiorna i calendari esterni ogni qualche ora: una modifica fatta adesso può arrivare sul telefono con un po\' di ritardo. Su Android l\'app gratuita <b>ICSx⁵</b> (incolla l\'indirizzo copiato) aggiorna più spesso.</p>' +
+    '<h3>Google Calendar</h3><p class="small">Dal telefono Google non sempre completa l\'aggiunta di un calendario tramite link (a volte non dà errori ma non aggiunge niente). Il modo sicuro è farlo <b>una volta da un computer</b>:</p>' +
+    '<ol class="passi-guida"><li>Sul computer apri <b>calendar.google.com</b> con lo stesso account Google del telefono.</li>' +
+    '<li>A sinistra, accanto ad <b>Altri calendari</b>, premi <b>+</b> › <b>Da URL</b>, incolla l\'indirizzo copiato qui sopra e premi <b>Aggiungi calendario</b>.</li>' +
+    '<li>Sul telefono, nell\'app Google Calendar: menu › <b>Impostazioni</b> › tocca il calendario "' + esc(d.nome) + '" e attiva <b>Sincronizza</b>; poi nel menu controlla che sia spuntato.</li>' +
+    '<li>Sempre nelle impostazioni di quel calendario, in <b>Notifiche</b>, scegli "All\'inizio dell\'evento": gli eventi sono già all\'ora dell\'avviso.</li></ol>' +
+    '<p class="small muted">La prima volta Google può metterci da qualche minuto ad alcune ore a leggere il calendario, e poi lo aggiorna ogni qualche ora.</p>' +
+    '<h3>Solo dal telefono Android</h3><p class="small">Installa l\'app <b>ICSx⁵</b> (gratis su F-Droid, pochi euro sul Play Store), premi <b>+</b> e incolla l\'indirizzo copiato: il calendario compare nell\'app Calendario del telefono, anche in Google Calendar, e si aggiorna più spesso.</p>' +
     '<p class="small muted">Non vuoi abbonarti? <button class="btn ghost piccolo" data-act="ics-scarica">Scarica un file .ics</button> con i prossimi 6 mesi (non si aggiorna da solo).</p></details></section>';
 
   h += '<section class="card"><h2>' + icona('casa', 'titolo') + 'Sulla schermata Home</h2><p>Così apri la bacheca come un\'app.</p><ul class="passi-guida">' +
