@@ -93,6 +93,58 @@ promemoria:
 Tutti condividono le stesse **eccezioni** (annulla / sposta / aggiungi) e gli stessi **avvisi**
 (offset in giorni prima + ora, oppure "il giorno prima alla sera").
 
+### Cosa insegna il foglio *Promemoria Documenti Familiari*
+
+Il foglio gestisce **2 auto × 5 scadenze** (revisione, bollo, assicurazione, tagliando, gomme). Per ogni
+scadenza ci sono data di esecuzione, data di scadenza e un preavviso unico di 20 giorni. Un secondo foglio
+dice **chi** riceve la mail per ogni voce: tutte le voci dell'auto condivisa vanno a 3 persone, quelle
+dell'altra auto a una sola. La mail parte una volta sola, alla data di preavviso.
+
+| Nel foglio | Nella nuova app |
+|---|---|
+| colonne PUMA / PASSAT | **oggetti**: un'auto (ma anche una casa, una persona, un animale) con i suoi promemoria raggruppati |
+| riga "Validità" (testo libero) | **regola di ripetizione** del modello: `ogni 1 anno`, `ogni 2 anni`, `prima volta dopo 4 anni, poi ogni 2` |
+| Data Esecuzione / Data Scadenza | `ultimaVolta` + `scadenza`, la scadenza **proposta** dalla regola ma sempre modificabile (il bollo non segue la data di pagamento) |
+| N° gg di primo preavviso = 20, uguale per tutto | preavvisi **multipli e per voce** (es. 20 gg, 7 gg, il giorno), con un valore predefinito per bacheca |
+| foglio "Imposta mail automatiche" (righe mail × voce) | **destinatari** sull'oggetto ("Passat: Carlo + 2 persone") ereditati dalle sue voci, eccezioni per singola voce |
+| istruzioni 2 e 3 (riscrivere le date, cancellare "Inviata il") | un pulsante **Fatto ✔**: segna l'esecuzione, calcola la nuova scadenza, riarma gli avvisi. Lo stato "inviato" lo gestisce l'app |
+| note "chiedere stato gomme", "estive/invernali", "4 stagioni" | note per voce e **modelli** più furbi (sotto) |
+
+Questo porta tre aggiunte al modello:
+
+```yaml
+oggetti:
+  - id: passat
+    nome: Passat
+    icona: "🚙"
+    destinatari: [carlo, persona2, persona3]   # chi riceve gli avvisi delle sue voci
+
+promemoria:
+  - id: revisione-passat
+    oggetto: passat                            # eredita icona, colore e destinatari
+    titolo: Revisione
+    quando:
+      tipo: scadenza
+      scadenza: "2027-11-30"
+      ultimaVolta: "2026-01-02"
+      ripeti: { ogni: 2, unita: anni, arrotonda: fine-mese }
+    avvisi: [{ prima: 20, unita: giorni }, { prima: 0, unita: giorni }]
+    insisti: true                              # se scade e non è "Fatto", ricorda ogni 3 giorni
+```
+
+Idee per il **modello "Auto"** nate dal foglio (chiede solo targa, data di immatricolazione e chi avvisare):
+- **Revisione**: prima a 4 anni dall'immatricolazione, poi ogni 2, entro la fine del mese → calcolata da sola.
+- **Bollo** e **assicurazione**: ogni anno, ricordando che la data va confermata (si propone, non si impone).
+- **Tagliando**: "2 anni **oppure** 25.000 km". L'app non conosce i km, quindi avvisa a tempo e, se vuoi,
+  chiede una volta l'anno "quanti km ha la Passat?" per stimare la data in anticipo.
+- **Gomme**: per le estive/invernali il modello conosce già le finestre di legge (invernali dal 15/11 al 15/04,
+  cambio tollerato un mese prima/dopo) e crea da solo i due avvisi stagionali; per le 4 stagioni
+  ricorda la rotazione ogni 10.000 km / 1 anno e il cambio a 40.000 km.
+
+Con l'app il foglio non serve più: il suo contenuto è già ricopiato in
+[`esempi/auto-famiglia.yaml`](esempi/auto-famiglia.yaml) (con gli indirizzi email sostituiti da segnaposto),
+e la fase 1 può includere un **import da Excel/Google Sheets** per chi ha fogli simili.
+
 ## 3. Architettura modulare
 
 Sì, una struttura modulare è la scelta giusta: ogni tipo di ricorrenza e ogni canale di notifica è un

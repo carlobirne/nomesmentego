@@ -1,0 +1,69 @@
+# Promemoria auto ricopiati dal foglio "Promemoria Documenti Familiari" (formato v2 della proposta).
+# Gli indirizzi email reali sono sostituiti da segnaposto.
+versione: 2
+bacheca:
+  nome: Auto di famiglia
+  fusoOrario: Europe/Rome
+  preavvisoPredefinito: { prima: 20, unita: giorni }
+
+persone:
+  - { id: carlo,    nome: Carlo,     email: carlo@example.com }
+  - { id: persona2, nome: Persona 2, email: persona2@example.com }
+  - { id: persona3, nome: Persona 3, email: persona3@example.com }
+
+categorie:
+  - { id: auto, nome: Auto, icona: "🚗", colore: "#22579a" }
+
+oggetti:
+  - { id: puma,   nome: Puma,   categoria: auto, destinatari: [carlo] }
+  - { id: passat, nome: Passat, categoria: auto, destinatari: [carlo, persona2, persona3] }
+
+# Gli avvisi non indicati usano preavvisoPredefinito (20 giorni prima), come nel foglio.
+promemoria:
+  # --- Puma ---
+  - id: revisione-puma
+    oggetto: puma
+    titolo: Revisione
+    quando: { tipo: scadenza, scadenza: "2028-08-31", ultimaVolta: "2026-08-26", ripeti: { ogni: 2, unita: anni, arrotonda: fine-mese } }
+  - id: bollo-puma
+    oggetto: puma
+    titolo: Bollo
+    quando: { tipo: scadenza, scadenza: "2027-04-30", ultimaVolta: "2026-01-02", ripeti: { ogni: 1, unita: anni } }
+  - id: assicurazione-puma
+    oggetto: puma
+    titolo: Assicurazione
+    quando: { tipo: scadenza, scadenza: "2027-02-25", ultimaVolta: "2026-02-20", ripeti: { ogni: 1, unita: anni } }
+  - id: tagliando-puma
+    oggetto: puma
+    titolo: Tagliando
+    nota: Entro 25.000 km o 2 anni (varia a seconda dell'auto)
+    quando: { tipo: scadenza, scadenza: "2027-10-15", ultimaVolta: "2026-01-12", ripeti: { ogni: 2, unita: anni } }
+  - id: gomme-puma
+    oggetto: puma
+    titolo: Cambio gomme (estive/invernali)
+    nota: Chiedere lo stato delle gomme, se da cambiare
+    quando: { tipo: scadenza, scadenza: "2026-11-20", ultimaVolta: "2026-05-20", ripeti: { ogni: 6, unita: mesi } }
+
+  # --- Passat ---
+  - id: revisione-passat
+    oggetto: passat
+    titolo: Revisione
+    quando: { tipo: scadenza, scadenza: "2027-11-30", ultimaVolta: "2026-01-02", ripeti: { ogni: 2, unita: anni, arrotonda: fine-mese } }
+  - id: bollo-passat
+    oggetto: passat
+    titolo: Bollo
+    quando: { tipo: scadenza, scadenza: "2027-01-12", ultimaVolta: "2024-01-15", ripeti: { ogni: 1, unita: anni } }
+  - id: assicurazione-passat
+    oggetto: passat
+    titolo: Assicurazione
+    quando: { tipo: scadenza, scadenza: "2027-09-15", ultimaVolta: "2025-09-15", ripeti: { ogni: 1, unita: anni } }
+  - id: tagliando-passat
+    oggetto: passat
+    titolo: Tagliando
+    nota: Entro 25.000 km o 2 anni (varia a seconda dell'auto)
+    quando: { tipo: scadenza, scadenza: "2027-02-15", ultimaVolta: "2024-03-24", ripeti: { ogni: 2, unita: anni } }
+  - id: gomme-passat
+    oggetto: passat
+    titolo: Gomme 4 stagioni (rotazione)
+    nota: L'ultima volta sono state scambiate tra davanti e dietro. Cambio ogni 40.000 km, rotazione ogni 10.000 km.
+    quando: { tipo: scadenza, scadenza: "2026-11-04", ultimaVolta: "2026-06-03" }
