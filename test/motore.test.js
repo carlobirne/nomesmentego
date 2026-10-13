@@ -183,3 +183,15 @@ test('gli esempi in docs/ e nel prototipo si importano', async () => {
   const rifiuti = leggi('../prototipo/raccolta-rifiuti/examples/pescantina-zona-a1.yaml');
   assert.equal(rifiuti.promemoria[0].voci.length, 5);
 });
+
+test('le vecchie emoji diventano disegni e il calendario non ha emoji', () => {
+  const b = bacheca([{ id: 'x', titolo: 'Bidone', icona: '🗑️', quando: { tipo: 'una-volta', data: '2026-10-20' }, avvisi: [{ prima: 0, unita: 'giorni', ora: '08:00' }] },
+    { id: 'y', titolo: 'Y', icona: 'luna', quando: { tipo: 'una-volta', data: '2026-10-20' } },
+    { id: 'z', titolo: 'Z', icona: '<b>', quando: { tipo: 'una-volta', data: '2026-10-20' } }],
+  { gruppi: [{ id: 'g', nome: 'G', icona: '🚙' }] });
+  assert.deepEqual(b.promemoria.map((p) => p.icona), ['spazzatura', 'luna', '']);
+  assert.equal(b.gruppi[0].icona, 'auto');
+  const { testo } = generaICS(b, { da: '2026-10-19', a: '2026-10-21' });
+  assert.match(testo, /SUMMARY:Bidone\r\n/);
+  assert.doesNotMatch(testo, /[\u{1F000}-\u{1FFFF}]/u);
+});

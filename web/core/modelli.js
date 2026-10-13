@@ -9,10 +9,10 @@ const giorniPrima = (n, ora = '09:00') => ({ prima: n, unita: 'giorni', ora, tes
 
 export const MODELLI = [
   {
-    id: 'rifiuti', icona: '🗑️', nome: 'Spazzatura',
+    id: 'rifiuti', icona: 'spazzatura', nome: 'Spazzatura',
     descrizione: 'Raccolta porta a porta, anche a settimane alterne',
     crea: (oggi) => ({
-      titolo: 'Raccolta rifiuti', icona: '🗑️',
+      titolo: 'Raccolta rifiuti', icona: 'spazzatura',
       quando: { tipo: 'rotazione', inizio: lunediDi(oggi), settimane: [{ nome: 'Settimana A', giorni: {} }, { nome: 'Settimana B', giorni: {} }] },
       voci: [
         { id: 'umido', nome: 'Umido', colore: '#6b3f1f' },
@@ -25,61 +25,61 @@ export const MODELLI = [
     }),
   },
   {
-    id: 'settimana', icona: '🛒', nome: 'Ogni settimana',
+    id: 'settimana', icona: 'mercato', nome: 'Ogni settimana',
     descrizione: 'Mercato, palestra, catechismo, pulizie…',
     crea: (oggi) => ({
-      titolo: '', icona: '🛒',
+      titolo: '', icona: 'mercato',
       quando: { tipo: 'settimanale', giorni: [], ogni: 1, inizio: oggi },
       avvisi: [sera('19:00')],
     }),
   },
   {
-    id: 'auto', icona: '🚗', nome: 'Auto',
+    id: 'auto', icona: 'auto', nome: 'Auto',
     descrizione: 'Revisione, bollo, assicurazione, tagliando, gomme',
     speciale: true,
   },
   {
-    id: 'scadenza', icona: '📄', nome: 'Una scadenza',
+    id: 'scadenza', icona: 'documento', nome: 'Una scadenza',
     descrizione: "Carta d'identità, caldaia, abbonamenti, visite di controllo",
     crea: (oggi) => ({
-      titolo: '', icona: '📄',
+      titolo: '', icona: 'documento',
       quando: { tipo: 'scadenza', scadenza: piu(oggi, 1, 'mesi'), ripeti: { ogni: 1, unita: 'anni', da: 'scadenza' } },
       avvisi: [giorniPrima(30), giorniPrima(7), mattina('09:00')],
       insisti: true,
     }),
   },
   {
-    id: 'mese', icona: '📅', nome: 'Ogni mese',
+    id: 'mese', icona: 'calendario', nome: 'Ogni mese',
     descrizione: 'Affitto, bollette, letture del contatore',
     crea: (oggi) => ({
-      titolo: '', icona: '📅',
+      titolo: '', icona: 'calendario',
       quando: { tipo: 'mensile', modo: 'giorno', giorno: 1, ogni: 1, inizio: oggi },
       avvisi: [mattina('09:00')],
     }),
   },
   {
-    id: 'compleanno', icona: '🎂', nome: 'Compleanno o anniversario',
+    id: 'compleanno', icona: 'compleanno', nome: 'Compleanno o anniversario',
     descrizione: 'Ogni anno nello stesso giorno',
     crea: (oggi) => ({
-      titolo: 'Compleanno di ', icona: '🎂',
+      titolo: 'Compleanno di ', icona: 'compleanno',
       quando: { tipo: 'annuale', mese: +oggi.slice(5, 7), giorno: +oggi.slice(8, 10) },
-      avvisi: [giorniPrima(7), mattina('08:30', 'Oggi: {titolo}! 🎉')],
+      avvisi: [giorniPrima(7), mattina('08:30', 'Oggi: {titolo}!')],
     }),
   },
   {
-    id: 'medicina', icona: '💊', nome: 'Medicina',
+    id: 'medicina', icona: 'medicina', nome: 'Medicina',
     descrizione: 'Ogni giorno o ogni tot giorni',
     crea: (oggi) => ({
-      titolo: '', icona: '💊',
+      titolo: '', icona: 'medicina',
       quando: { tipo: 'giornaliero', ogni: 1, inizio: oggi },
       avvisi: [mattina('08:00')],
     }),
   },
   {
-    id: 'altro', icona: '✏️', nome: 'Una volta sola',
+    id: 'altro', icona: 'campanella', nome: 'Una volta sola',
     descrizione: 'Un appuntamento o una cosa da non dimenticare',
     crea: (oggi) => ({
-      titolo: '', icona: '✏️',
+      titolo: '', icona: 'campanella',
       quando: { tipo: 'una-volta', data: oggi },
       avvisi: [sera('20:00'), mattina('08:00')],
     }),
@@ -109,7 +109,7 @@ export const primaRevisione = (immatricolazione) => fineMese(piu(immatricolazion
  * @param scadenze  { revisione: 'AAAA-MM-GG', bollo: ..., ... } (le vuote si saltano)
  * @param preavviso giorni del primo avviso (default 20, come nel foglio Google)
  */
-export function creaAuto({ nome, icona = '🚗', colore = '#22579a', scadenze = {}, preavviso = 20 }) {
+export function creaAuto({ nome, icona = 'auto', colore = '#c8102e', scadenze = {}, preavviso = 20 }) {
   const gruppo = { id: nuovoId('g'), nome: nome || 'Auto', icona, colore };
   const promemoria = VOCI_AUTO.filter((v) => valida(scadenze[v.id])).map((v) => ({
     id: nuovoId('p'),

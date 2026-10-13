@@ -11,6 +11,20 @@ export const LIMITI = { promemoria: 300, voci: 30, settimane: 12, avvisi: 6, ecc
 
 export const nuovoId = (p = '') => p + Math.random().toString(36).slice(2, 10);
 
+/** Nomi dei disegni disponibili (web/js/disegni.js). Le vecchie emoji si convertono da sole. */
+export const ICONE = ['campanella', 'spazzatura', 'mercato', 'auto', 'documento', 'medicina', 'compleanno', 'calendario', 'casa', 'fuoco',
+  'acqua', 'animale', 'pianta', 'salute', 'scuola', 'sport', 'soldi', 'telefono', 'stella', 'luna', 'uccello', 'occhio'];
+const DA_EMOJI = {
+  '🗑': 'spazzatura', '♻': 'spazzatura', '🛒': 'mercato', '🚗': 'auto', '🚙': 'auto', '🛻': 'auto', '🚐': 'auto', '🏍': 'auto', '🛵': 'auto',
+  '📄': 'documento', '💊': 'medicina', '🎂': 'compleanno', '📅': 'calendario', '🏠': 'casa', '🔥': 'fuoco', '💧': 'acqua', '🐶': 'animale',
+  '🌱': 'pianta', '🏥': 'salute', '🎒': 'scuola', '⚽': 'sport', '💶': 'soldi', '✂': 'documento', '📞': 'telefono', '✏': 'campanella', '🔔': 'campanella',
+};
+export function icona(v) {
+  const s = String(v ?? '').trim();
+  if (ICONE.includes(s)) return s;
+  return DA_EMOJI[s.replace(/\uFE0F/g, '')] || '';
+}
+
 const str = (v, max = LIMITI.testo) => String(v ?? '').slice(0, max);
 const int = (v, min, max, def) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : def; };
 const colore = (v, def = '#5b6b62') => /^#[0-9a-f]{6}$/i.test(String(v ?? '')) ? String(v).toLowerCase() : def;
@@ -108,7 +122,7 @@ function normalizzaPromemoria(p, gruppi, oggiISO) {
     id: idValido(p.id) ? p.id : nuovoId('p'),
     titolo: str(p.titolo || 'Promemoria', 80),
     gruppo: gruppi.some((g) => g.id === p.gruppo) ? p.gruppo : '',
-    icona: str(p.icona, 8),
+    icona: icona(p.icona),
     nota: str(p.nota, LIMITI.nota),
     quando,
     voci,
@@ -128,11 +142,11 @@ export function daRaccoltaRifiuti(v1) {
   return {
     versione: VERSIONE,
     nome: v1.sottotitolo || v1.titolo || 'Casa',
-    gruppi: [{ id: 'rifiuti', nome: 'Rifiuti', icona: '🗑️', colore: '#3e7d3a' }],
+    gruppi: [{ id: 'rifiuti', nome: 'Rifiuti', icona: 'spazzatura', colore: '#2e7d4f' }],
     promemoria: [{
       id: 'raccolta',
       titolo: v1.titolo && !/\?$/.test(v1.titolo) ? v1.titolo : 'Raccolta rifiuti',
-      gruppo: 'rifiuti', icona: '🗑️',
+      gruppo: 'rifiuti', icona: 'spazzatura',
       nota: [v1.orario ? 'Esposizione ' + v1.orario + '.' : '', ...lista(v1.note).map((n) => n.titolo + ': ' + n.testo)].filter(Boolean).join('\n'),
       quando: {
         tipo: 'rotazione', inizio: v1.inizioCiclo,
@@ -152,7 +166,7 @@ export function normalizza(raw, oggiISO = oggi()) {
     if (Array.isArray(raw.rifiuti) && Array.isArray(raw.settimane)) raw = daRaccoltaRifiuti(raw);
   }
   const gruppi = lista(raw.gruppi).slice(0, LIMITI.gruppi).filter((g) => g && idValido(g.id))
-    .map((g) => ({ id: g.id, nome: str(g.nome || g.id, 40), icona: str(g.icona, 8), colore: colore(g.colore) }))
+    .map((g) => ({ id: g.id, nome: str(g.nome || g.id, 40), icona: icona(g.icona) || 'campanella', colore: colore(g.colore) }))
     .filter((g, i, a) => a.findIndex((x) => x.id === g.id) === i);
   const persone = lista(raw.persone).slice(0, LIMITI.persone).filter((p) => p && idValido(p.id))
     .map((p) => ({ id: p.id, nome: str(p.nome || p.id, 60), email: str(p.email, 120), telegram: str(p.telegram, 60) }));

@@ -45,8 +45,9 @@ Il codice è pubblicato in automatico da GitHub a ogni modifica del branch `main
    - `CODICE_INVITO` (facoltativo ma consigliato) = una parola da chiedere a chi crea una nuova bacheca,
      così solo chi la conosce può usare il tuo spazio.
 5. Fai il merge su `main` (o lancia a mano *Actions › Test e pubblicazione › Run workflow*).
-   La prima volta il workflow crea anche il database. Alla fine, nel log del passo **Pubblica**,
-   trovi l'indirizzo dell'app.
+   La prima volta il workflow crea anche il database. L'indirizzo dell'app compare nella pagina
+   dell'esecuzione (*Actions* › l'ultima esecuzione: riquadro **App pubblicata** e link sul job *deploy*)
+   e nella colonna di destra della pagina del repository, sotto **Deployments › produzione**.
 
 Poi apri l'indirizzo, crea la bacheca, aggiungi i promemoria e, nella scheda **Telefono e condivisione**:
 aggiungi il calendario al telefono e manda il link a chi serve.

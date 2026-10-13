@@ -1,7 +1,8 @@
 // Editor di un promemoria in 3 passi: Cosa, Quando, Avvisi.
 // Lavora su una copia (S.bozza): niente viene salvato finché non si preme "Salva".
 import { S, modifica, render, oggi } from './stato.js';
-import { esc, toast, testoSu, ICONE, COLORI } from './ui.js';
+import { esc, toast, testoSu, COLORI } from './ui.js';
+import { sceltaIcone } from './viste.js';
 import { normalizza, nuovoId } from '../core/modello.js';
 import { riassunto, prossime, settimanaDi, descriviQuando, nomiVoci } from '../core/motore.js';
 import { GIORNI, GIORNI_NOMI, MESI_NOMI, lunediDi, piuGiorni, fmtGiorno, fmt, valida } from '../core/date.js';
@@ -50,11 +51,10 @@ export function vistaEditor() {
   const p = S.bozza, q = p.quando;
   let h = '<section class="card"><div class="passo"><span class="n">1</span><h2>Cosa</h2></div><div class="stack">' +
     '<label class="field">Nome del promemoria<input type="text" class="grande" data-bind="titolo" value="' + esc(p.titolo) + '" placeholder="es. Mercato in piazza" maxlength="80"></label>' +
-    '<div><div class="small" style="font-weight:700;margin-bottom:6px">Icona</div><div class="emoji-pick" role="group" aria-label="Icona">' +
-    [...new Set([p.icona, ...ICONE])].filter(Boolean).map((e) => '<button data-act="ed-icona" data-v="' + esc(e) + '" aria-pressed="' + (p.icona === e) + '" aria-label="Icona ' + esc(e) + '">' + esc(e) + '</button>').join('') + '</div></div>' +
+    '<div><div class="small" style="font-weight:700;margin-bottom:6px">Disegno</div>' + sceltaIcone(p.icona, 'ed-icona') + '</div>' +
     '<div class="row end"><label class="field">Gruppo<span class="aiuto">Per tenere insieme le cose: un\'auto, la casa…</span><select data-bind="gruppo"><option value="">Nessun gruppo</option>' +
-    S.dati.gruppi.map((g) => '<option value="' + esc(g.id) + '"' + (g.id === p.gruppo ? ' selected' : '') + '>' + esc(g.icona + ' ' + g.nome) + '</option>').join('') +
-    '<option value="__nuovo">＋ Nuovo gruppo…</option></select></label></div>' +
+    S.dati.gruppi.map((g) => '<option value="' + esc(g.id) + '"' + (g.id === p.gruppo ? ' selected' : '') + '>' + esc(g.nome) + '</option>').join('') +
+    '<option value="__nuovo">+ Nuovo gruppo…</option></select></label></div>' +
     '<label class="field">Nota (facoltativa)<span class="aiuto">Compare nel calendario: istruzioni, numeri utili, targa…</span><textarea data-bind="nota" maxlength="2000">' + esc(p.nota) + '</textarea></label>' +
     '</div></section>';
 
@@ -70,7 +70,7 @@ export function vistaEditor() {
 
   h += '<section class="card"><div class="riassunto" id="riassunto" aria-live="polite">' + riassuntoHTML() + '</div>';
   if (!S.bozzaNuova) {
-    h += '<div class="row" style="margin-top:12px"><button class="btn" data-act="ed-pausa">' + (p.pausa ? '▶ Riattiva' : '⏸ Metti in pausa') + '</button>' +
+    h += '<div class="row" style="margin-top:12px"><button class="btn" data-act="ed-pausa">' + (p.pausa ? 'Riattiva' : 'Metti in pausa') + '</button>' +
       '<button class="btn" data-act="ed-duplica">Duplica</button>' +
       (S.ui.conferma === 'del' ? '<button class="btn danger" data-act="ed-elimina-ok">Conferma: elimina</button>' : '<button class="btn danger" data-act="ed-elimina">Elimina</button>') + '</div>';
   }
@@ -141,18 +141,18 @@ function editorRotazione(p) {
       '<input type="text" data-bind="voce-nome" data-i="' + i + '" value="' + esc(v.nome) + '" aria-label="Nome della voce" style="flex:1 1 120px;width:auto">' +
       '<button class="btn danger piccolo" data-act="ed-voce-del" data-i="' + i + '">Elimina</button></div>';
   });
-  h += '<button class="btn piccolo" data-act="ed-voce-add" style="margin-top:6px">＋ Aggiungi voce</button></details>';
+  h += '<button class="btn piccolo" data-act="ed-voce-add" style="margin-top:6px">+ Aggiungi voce</button></details>';
   // settimane
   h += '<div class="week-tabs" role="group" aria-label="Scegli la settimana" style="margin-top:14px">' +
     q.settimane.map((x, i) => '<button data-act="ed-sett" data-i="' + i + '" aria-pressed="' + (i === sel) + '">' + esc(x.nome) + (i === settimanaDi(q, t) ? ' • questa' : '') + '</button>').join('') +
-    (q.settimane.length < 12 ? '<button data-act="ed-sett-add" aria-label="Aggiungi una settimana">＋</button>' : '') + '</div>';
+    (q.settimane.length < 12 ? '<button data-act="ed-sett-add" aria-label="Aggiungi una settimana">+</button>' : '') + '</div>';
   h += '<div class="row end" style="margin-top:10px"><label class="field">Nome della settimana<input type="text" data-bind="sett-nome" value="' + esc(w.nome) + '" maxlength="40"></label>' +
     (q.settimane.length > 1 ? (S.ui.conferma === 'sett' ? '<button class="btn danger" data-act="ed-sett-del-ok">Conferma</button>' : '<button class="btn danger" data-act="ed-sett-del">Elimina settimana</button>') : '') + '</div>';
   GIORNI.forEach((k, i) => {
     const v = w.giorni[k];
     h += '<div class="dayrow"><div class="dn">' + GIORNI_NOMI[i] + '</div><div class="chips">';
     if (!p.voci.length) {
-      h += '<button class="chip" data-act="ed-rot-giorno" data-k="' + k + '" aria-pressed="' + (v === true) + '">' + (v === true ? '✓ Sì' : 'No') + '</button>';
+      h += '<button class="chip" data-act="ed-rot-giorno" data-k="' + k + '" aria-pressed="' + (v === true) + '">' + (v === true ? 'Sì' : 'No') + '</button>';
     } else {
       p.voci.forEach((x) => {
         const on = Array.isArray(v) && v.includes(x.id);
@@ -171,10 +171,10 @@ function editorRotazione(p) {
 function editorAvvisi(p) {
   let h = '<p class="muted small">Ogni avviso diventa un promemoria sul calendario del telefono, all\'ora che scegli.</p>' +
     '<div class="chips" style="margin-bottom:8px">' +
-    '<button class="chip" data-act="ed-avv-preset" data-v="1-giorni-20:00">＋ La sera prima alle 20</button>' +
-    '<button class="chip" data-act="ed-avv-preset" data-v="0-giorni-08:00">＋ La mattina alle 8</button>' +
-    '<button class="chip" data-act="ed-avv-preset" data-v="1-settimane-09:00">＋ Una settimana prima</button>' +
-    '<button class="chip" data-act="ed-avv-preset" data-v="1-mesi-09:00">＋ Un mese prima</button></div>';
+    '<button class="chip" data-act="ed-avv-preset" data-v="1-giorni-20:00">+ La sera prima alle 20</button>' +
+    '<button class="chip" data-act="ed-avv-preset" data-v="0-giorni-08:00">+ La mattina alle 8</button>' +
+    '<button class="chip" data-act="ed-avv-preset" data-v="1-settimane-09:00">+ Una settimana prima</button>' +
+    '<button class="chip" data-act="ed-avv-preset" data-v="1-mesi-09:00">+ Un mese prima</button></div>';
   if (!p.avvisi.length) h += '<p class="notice small">Nessun avviso: il promemoria si vedrà nell\'app e nel calendario, ma senza notifica.</p>';
   p.avvisi.forEach((a, i) => {
     const chiave = a.prima + '-' + a.unita;
@@ -211,7 +211,7 @@ function editorEccezioni(p) {
     h += '<label class="field">Nota<input type="text" data-bind="ecc-nota" data-i="' + i + '" value="' + esc(e.nota) + '" placeholder="es. Capodanno" maxlength="140"></label>' +
       '<button class="btn danger piccolo" data-act="ed-ecc-del" data-i="' + i + '">Togli</button></div>';
   }
-  h += '<button class="btn" data-act="ed-ecc-add" style="margin-top:8px">＋ Aggiungi un giorno speciale</button></details></section>';
+  h += '<button class="btn" data-act="ed-ecc-add" style="margin-top:8px">+ Aggiungi un giorno speciale</button></details></section>';
   return h;
 }
 
@@ -317,7 +317,7 @@ export const AZIONI_EDITOR = {
       const i = d.promemoria.findIndex((x) => x.id === salvato.id);
       if (i >= 0) d.promemoria[i] = salvato; else d.promemoria.push(salvato);
     }, { subito: true });
-    toast(nuovo ? 'Promemoria aggiunto ✓' : 'Modifiche salvate ✓');
+    toast(nuovo ? 'Promemoria aggiunto.' : 'Modifiche salvate.');
     location.hash = '#promemoria';
   },
 };
@@ -330,7 +330,7 @@ export const LEGAMI_EDITOR = {
     if (el.value === '__nuovo') {
       const nome = prompt('Nome del nuovo gruppo (es. Panda, Casa al mare):');
       if (nome && nome.trim()) {
-        const g = { id: nuovoId('g'), nome: nome.trim().slice(0, 40), icona: S.bozza.icona || '🏠', colore: COLORI[S.dati.gruppi.length % COLORI.length] };
+        const g = { id: nuovoId('g'), nome: nome.trim().slice(0, 40), icona: S.bozza.icona || 'casa', colore: COLORI[S.dati.gruppi.length % COLORI.length] };
         modifica((d) => d.gruppi.push(g));
         S.bozza.gruppo = g.id;
       }

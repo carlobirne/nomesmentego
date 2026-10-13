@@ -59,5 +59,5 @@ export function caricaScript(src) {
   });
 }
 
-export const ICONE = ['🗑️', '♻️', '🛒', '🚗', '🚙', '📄', '💊', '🎂', '📅', '🏠', '🔥', '💧', '🐶', '🌱', '🏥', '🎒', '⚽', '💶', '✂️', '📞', '✏️'];
-export const COLORI = ['#1d3b2f', '#3e7d3a', '#22579a', '#6b3f1f', '#f2c230', '#b42318', '#7a3e9d', '#4d5257', '#0e7c86', '#d9622b'];
+// tavolozza ispirata a Miró: rosso, blu, giallo, verde, nero e qualche terra
+export const COLORI = ['#c8102e', '#1f4aa8', '#f2b705', '#2e7d4f', '#1b1712', '#e0582b', '#6b3fa0', '#7a4a2a', '#2a9d8f', '#d94f8a'];
