@@ -1,0 +1,24 @@
+// Configurazione Cloudflare Workers: un solo "Worker" serve l'app (cartella web/),
+// l'API delle bacheche e i feed del calendario. I dati stanno nel database D1 "nomesmentego".
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nomesmentego",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "web",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/feed/*", "/manifest/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nomesmentego",
+      // Dopo "npx wrangler d1 create nomesmentego" incolla qui l'id che ti restituisce.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "observability": { "enabled": true }
+}
