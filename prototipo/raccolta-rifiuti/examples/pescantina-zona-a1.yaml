@@ -1,0 +1,74 @@
+# Configurazione "Raccolta rifiuti" (versione 1)
+# Reimportala nell'app da Stampa e backup > Importa.
+# Giorni: lun mar mer gio ven sab dom = giorni di RITIRO.
+# inizioCiclo: un lunedì in cui comincia la prima settimana della lista.
+# Eccezioni: azione annulla | sposta (con nuovaData) | aggiungi. Senza "rifiuti" vale per tutti.
+
+titolo: Cosa metto fuori stasera?
+sottotitolo: Comune di Pescantina · Zona A1
+orario: dalle 21:00 alle 24:00
+esponiSeraPrima: true
+inizioCiclo: "2026-01-12"
+promemoria:
+  ora: "20:30"
+  avvisoMinuti: 0
+  mesi: 6
+rifiuti:
+  - id: umido
+    nome: Umido
+    colore: "#6b3f1f"
+    nota: Sacchetti mater-bi o carta, nella biopattumiera da 25 l. Mai sfuso.
+  - id: secco
+    nome: Secco
+    colore: "#4d5257"
+    nota: Sacchi semitrasparenti.
+  - id: plastica
+    nome: Plastica e lattine
+    colore: "#f2c230"
+    nota: Sacchi semitrasparenti, imballaggi senza residui.
+  - id: carta
+    nome: Carta e cartone
+    colore: "#22579a"
+    nota: Scatole, buste di carta o legata. Mai in sacchi di plastica.
+  - id: verde
+    nome: Verde
+    colore: "#3e7d3a"
+    nota: "Solo con adesione a pagamento. Date variabili: aggiungile come eccezioni."
+settimane:
+  - nome: Settimana A
+    descrizione: quella con secco e plastica
+    giorni:
+      lun:
+        - umido
+      mer:
+        - secco
+      ven:
+        - umido
+        - plastica
+  - nome: Settimana B
+    descrizione: quella con la carta
+    giorni:
+      lun:
+        - umido
+      ven:
+        - umido
+      sab:
+        - carta
+eccezioni:
+  - data: "2027-01-01"
+    azione: sposta
+    nuovaData: "2026-12-31"
+    nota: "Capodanno: ritiro anticipato a giovedì 31 dicembre"
+note:
+  - titolo: Festività
+    testo: "Attorno a Natale (25 e 26 dicembre) il calendario ufficiale segnala anticipi: controlla quei giorni."
+  - titolo: Pannolini e pannoloni
+    testo: Con il secco, oppure nel sacco rosso del Comune accanto al bidoncino nei giorni dell'umido.
+  - titolo: Vetro
+    testo: Nelle campane stradali.
+  - titolo: Ecocentro, via Bardoline 2
+    testo: Pile, farmaci, oli, vernici, RAEE, ingombranti. Lun–ven 16–18:50, mer anche 10–12:30, sab 8:30–13 e 16–18:50.
+  - titolo: Numeri utili
+    testo: Mancato ritiro (Serit) 800 125 850 · Ingombranti a domicilio 800 734 989 · Ufficio Ecologia 045 6764207.
+  - titolo: Regola generale
+    testo: Massimo 15 kg per contenitore. In caso di dubbio vale il calendario ufficiale del Comune.

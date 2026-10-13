@@ -1,0 +1,45 @@
+# Configurazione "Raccolta rifiuti" (versione 1)
+# Reimportala nell'app da Stampa e backup > Importa.
+# Giorni: lun mar mer gio ven sab dom = giorni di RITIRO.
+# inizioCiclo: un lunedì in cui comincia la prima settimana della lista.
+# Eccezioni: azione annulla | sposta (con nuovaData) | aggiungi. Senza "rifiuti" vale per tutti.
+
+titolo: Raccolta rifiuti
+sottotitolo: ""
+orario: dalle 21:00 alle 24:00
+esponiSeraPrima: true
+inizioCiclo: "2026-10-12"
+promemoria:
+  ora: "20:30"
+  avvisoMinuti: 0
+  mesi: 6
+rifiuti:
+  - id: umido
+    nome: Umido
+    colore: "#6b3f1f"
+    nota: ""
+  - id: secco
+    nome: Secco
+    colore: "#4d5257"
+    nota: ""
+  - id: plastica
+    nome: Plastica e lattine
+    colore: "#f2c230"
+    nota: ""
+  - id: carta
+    nome: Carta e cartone
+    colore: "#22579a"
+    nota: ""
+  - id: vetro
+    nome: Vetro
+    colore: "#2f7d4f"
+    nota: ""
+settimane:
+  - nome: Settimana A
+    descrizione: ""
+    giorni: {}
+  - nome: Settimana B
+    descrizione: ""
+    giorni: {}
+eccezioni: []
+note: []
