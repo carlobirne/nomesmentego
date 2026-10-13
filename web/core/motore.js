@@ -1,0 +1,276 @@
+// Motore: dai promemoria alle date in cui accadono (occorrenze) e agli avvisi da mandare.
+// Puro: niente DOM, niente rete. Lo usano interfaccia, feed calendario e test.
+import {
+  GIORNI, GIORNI_NOMI, MESI_NOMI, giornoSettimana, lunediDi, differenza, piuGiorni, piu, parti,
+  giorniNelMese, componi, fineMese, fmt, fmtAnno, relativo,
+} from './date.js';
+
+/* ---------- regola di base, senza eccezioni ---------- */
+
+/** Indice della settimana di rotazione per una data. */
+export function settimanaDi(q, d) {
+  const n = q.settimane.length;
+  const w = Math.floor(differenza(q.inizio, lunediDi(d)) / 7);
+  return ((w % n) + n) % n;
+}
+
+/** n-esimo giorno della settimana `gs` (0..6) nel mese; n = -1 per l'ultimo. */
+function ennesimoGiorno(y, m, n, gs) {
+  const primo = componi(y, m, 1);
+  const delta = (gs - giornoSettimana(primo) + 7) % 7;
+  if (n > 0) {
+    const d = 1 + delta + (n - 1) * 7;
+    return d <= giorniNelMese(y, m) ? componi(y, m, d) : null;
+  }
+  const ultimo = componi(y, m, giorniNelMese(y, m));
+  return piuGiorni(ultimo, -((giornoSettimana(ultimo) - gs + 7) % 7));
+}
+
+/**
+ * Cosa prevede la regola in quella data:
+ * null = niente; [] = sì (promemoria senza voci); ['umido', ...] = sì, con queste voci.
+ */
+export function base(p, d) {
+  const q = p.quando;
+  switch (q.tipo) {
+    case 'una-volta':
+      return q.data === d ? [] : null;
+    case 'giornaliero': {
+      const n = differenza(q.inizio, d);
+      return n >= 0 && n % q.ogni === 0 ? [] : null;
+    }
+    case 'settimanale': {
+      if (!q.giorni.includes(GIORNI[giornoSettimana(d)])) return null;
+      const w = Math.floor(differenza(q.inizio, lunediDi(d)) / 7);
+      return w >= 0 && w % q.ogni === 0 ? [] : null;
+    }
+    case 'rotazione': {
+      const v = q.settimane[settimanaDi(q, d)].giorni[GIORNI[giornoSettimana(d)]];
+      if (v === true) return [];
+      return Array.isArray(v) && v.length ? v.slice() : null;
+    }
+    case 'mensile': {
+      if (d < q.inizio) return null;
+      const [y, m] = parti(d), [y0, m0] = parti(q.inizio);
+      if (((y - y0) * 12 + (m - m0)) % q.ogni !== 0) return null;
+      let atteso;
+      if (q.modo === 'giorno') atteso = componi(y, m, q.giorno === -1 ? giorniNelMese(y, m) : Math.min(q.giorno, giorniNelMese(y, m)));
+      else atteso = ennesimoGiorno(y, m, q.n, GIORNI.indexOf(q.giornoSett));
+      return atteso === d ? [] : null;
+    }
+    case 'annuale': {
+      const [y, m, g] = parti(d);
+      if (m !== q.mese) return null;
+      return g === Math.min(q.giorno, giorniNelMese(y, m)) ? [] : null;
+    }
+    case 'scadenza':
+      return q.scadenza === d ? [] : null;
+  }
+  return null;
+}
+
+/* ---------- eccezioni ---------- */
+
+const ordina = (p, ids) => {
+  const ordine = p.voci.map((v) => v.id);
+  return ids.sort((a, b) => ordine.indexOf(a) - ordine.indexOf(b));
+};
+
+/** Occorrenza in una data, eccezioni comprese: null oppure { data, voci, note, cambiata } */
+export function occorrenzaIl(p, d) {
+  let voci = base(p, d);
+  const note = [];
+  let cambiata = false;
+  for (const e of p.eccezioni) {
+    if (e.data !== d || e.azione === 'aggiungi' || voci === null) continue;
+    if (e.voci.length && voci.length) {
+      const via = e.voci.filter((v) => voci.includes(v));
+      if (!via.length) continue;
+      voci = voci.filter((v) => !via.includes(v));
+      if (!voci.length) voci = null;
+    } else voci = null;
+    cambiata = true;
+    note.push(e.nota || (e.azione === 'sposta' ? 'Spostato a ' + GIORNI_NOMI[giornoSettimana(e.nuovaData)] + ' ' + fmt(e.nuovaData) : 'Annullato'));
+  }
+  for (const e of p.eccezioni) {
+    let aggiunte = null;
+    if (e.azione === 'sposta' && e.nuovaData === d) {
+      const orig = base(p, e.data);
+      if (orig === null) continue;
+      aggiunte = e.voci.length ? e.voci.filter((v) => orig.length === 0 || orig.includes(v)) : orig;
+      note.push(e.nota || 'Recupero di ' + GIORNI_NOMI[giornoSettimana(e.data)] + ' ' + fmt(e.data));
+    } else if (e.azione === 'aggiungi' && e.data === d) {
+      aggiunte = e.voci.slice();
+      if (e.nota) note.push(e.nota);
+    } else continue;
+    voci = voci === null ? aggiunte.slice() : [...new Set([...voci, ...aggiunte])];
+    cambiata = true;
+  }
+  if (voci === null) return note.length ? { data: d, voci: null, note: [...new Set(note)], cambiata } : null;
+  return { data: d, voci: ordina(p, voci), note: [...new Set(note)], cambiata };
+}
+
+/** Occorrenze (vere) tra `da` e `a` compresi. Le note di annullamento sono incluse con voci = null. */
+export function occorrenze(p, da, a, { annullate = false } = {}) {
+  if (p.pausa) return [];
+  const out = [];
+  const q = p.quando;
+  // scorciatoie per i tipi con una sola data nota
+  if ((q.tipo === 'una-volta' || q.tipo === 'scadenza') && !p.eccezioni.length) {
+    const d = q.tipo === 'scadenza' ? q.scadenza : q.data;
+    return d >= da && d <= a ? [{ data: d, voci: [], note: [], cambiata: false }] : [];
+  }
+  const n = differenza(da, a);
+  for (let i = 0; i <= n; i++) {
+    const o = occorrenzaIl(p, piuGiorni(da, i));
+    if (o && (o.voci !== null || annullate)) out.push(o);
+  }
+  return out;
+}
+
+/** Prossime `quante` occorrenze da `da` in poi (cerca al massimo per `orizzonte` giorni). */
+export function prossime(p, da, quante = 1, orizzonte = 800) {
+  const out = [];
+  for (let i = 0; i <= orizzonte && out.length < quante; i += 60) {
+    const fine = piuGiorni(da, Math.min(i + 59, orizzonte));
+    out.push(...occorrenze(p, piuGiorni(da, i), fine));
+  }
+  return out.slice(0, quante);
+}
+
+/* ---------- avvisi ---------- */
+
+const MAX_PRIMA = { giorni: 1, settimane: 7, mesi: 31 };
+const INSISTI_OGNI = 3, INSISTI_PER = 30;
+
+export const nomiVoci = (p, ids) => (ids || []).map((id) => p.voci.find((v) => v.id === id)?.nome).filter(Boolean);
+
+function testoAvviso(p, a, o, quando) {
+  const voci = nomiVoci(p, o.voci).join(', ');
+  const tra = relativo(quando, o.data);
+  if (a.testo) {
+    return a.testo
+      .replaceAll('{voci}', voci || p.titolo)
+      .replaceAll('{titolo}', p.titolo)
+      .replaceAll('{tra}', tra)
+      .replaceAll('{data}', fmt(o.data));
+  }
+  const base = p.titolo + (voci ? ': ' + voci : '');
+  return quando === o.data ? base : base + ' (' + tra + ', ' + fmt(o.data) + ')';
+}
+
+/**
+ * Avvisi che scattano tra `da` e `a` compresi.
+ * Ognuno: { id, promemoria, data (quando scatta), ora, occorrenza, testo, scaduto }
+ */
+export function avvisi(p, da, a) {
+  if (p.pausa || !p.avvisi.length) return [];
+  const anticipo = Math.max(...p.avvisi.map((x) => x.prima * MAX_PRIMA[x.unita]));
+  const occ = occorrenze(p, da, piuGiorni(a, anticipo));
+  const out = [];
+  for (const o of occ) {
+    p.avvisi.forEach((x, i) => {
+      const quando = piu(o.data, -x.prima, x.unita);
+      if (quando < da || quando > a) return;
+      out.push({ id: p.id + '-' + o.data + '-' + i, promemoria: p.id, data: quando, ora: x.ora, occorrenza: o, testo: testoAvviso(p, x, o, quando), scaduto: false });
+    });
+  }
+  // scadenza non segnata come "Fatto": ricorda ogni 3 giorni per un mese
+  if (p.insisti && p.quando.tipo === 'scadenza') {
+    const s = p.quando.scadenza;
+    const ora = p.avvisi[p.avvisi.length - 1].ora;
+    for (let k = INSISTI_OGNI; k <= INSISTI_PER; k += INSISTI_OGNI) {
+      const quando = piuGiorni(s, k);
+      if (quando < da || quando > a) continue;
+      out.push({
+        id: p.id + '-' + s + '-insisti-' + k, promemoria: p.id, data: quando, ora,
+        occorrenza: { data: s, voci: [], note: [], cambiata: false },
+        testo: '⚠️ Scaduto da ' + k + ' giorni: ' + p.titolo + ' (segna "Fatto" nell\'app)', scaduto: true,
+      });
+    }
+  }
+  return out.sort((x, y) => (x.data + x.ora).localeCompare(y.data + y.ora));
+}
+
+export function tuttiGliAvvisi(bacheca, da, a) {
+  return bacheca.promemoria.flatMap((p) => avvisi(p, da, a))
+    .sort((x, y) => (x.data + x.ora).localeCompare(y.data + y.ora));
+}
+
+/** Tutte le occorrenze della bacheca in un intervallo, raggruppate per data. */
+export function agenda(bacheca, da, a) {
+  const perData = new Map();
+  for (const p of bacheca.promemoria) {
+    for (const o of occorrenze(p, da, a, { annullate: true })) {
+      if (!perData.has(o.data)) perData.set(o.data, []);
+      perData.get(o.data).push({ p, o });
+    }
+  }
+  return [...perData.entries()].sort((x, y) => x[0].localeCompare(y[0])).map(([data, voci]) => ({ data, voci }));
+}
+
+/* ---------- scadenze ---------- */
+
+/** Prossima scadenza proposta quando si preme "Fatto" in data `fattoIl`. */
+export function prossimaScadenza(q, fattoIl) {
+  if (q.tipo !== 'scadenza' || !q.ripeti) return null;
+  const { ogni, unita, da, fineMese: fm } = q.ripeti;
+  let d = piu(da === 'scadenza' ? q.scadenza : fattoIl, ogni, unita);
+  if (da === 'scadenza') while (d <= fattoIl) d = piu(d, ogni, unita); // se era scaduta da più cicli
+  return fm ? fineMese(d) : d;
+}
+
+/** Restituisce il promemoria aggiornato dopo "Fatto" (senza modificarlo). */
+export function segnaFatto(p, fattoIl, nuovaScadenza = prossimaScadenza(p.quando, fattoIl)) {
+  if (p.quando.tipo !== 'scadenza') return p;
+  return { ...p, quando: { ...p.quando, ultimaVolta: fattoIl, scadenza: nuovaScadenza || p.quando.scadenza } };
+}
+
+/* ---------- descrizioni in italiano ---------- */
+
+const elenco = (arr) => arr.length <= 1 ? arr.join('') : arr.slice(0, -1).join(', ') + ' e ' + arr[arr.length - 1];
+const ORDINALI = { 1: 'primo', 2: 'secondo', 3: 'terzo', 4: 'quarto', '-1': 'ultimo' };
+const unitaSing = { giorni: 'giorno', settimane: 'settimana', mesi: 'mese', anni: 'anno' };
+export const quantita = (n, unita) => n === 1 ? (unita === 'settimane' ? '1 settimana' : '1 ' + unitaSing[unita]) : n + ' ' + unita;
+
+export function descriviQuando(p) {
+  const q = p.quando;
+  const nomiG = (gs) => elenco(gs.map((g) => GIORNI_NOMI[GIORNI.indexOf(g)]));
+  switch (q.tipo) {
+    case 'una-volta': return 'Una volta, ' + GIORNI_NOMI[giornoSettimana(q.data)] + ' ' + fmtAnno(q.data);
+    case 'giornaliero': return q.ogni === 1 ? 'Ogni giorno' : 'Ogni ' + q.ogni + ' giorni';
+    case 'settimanale':
+      if (!q.giorni.length) return 'Ogni settimana (scegli i giorni)';
+      return (q.ogni === 1 ? 'Ogni ' : q.ogni === 2 ? 'A settimane alterne, il ' : 'Ogni ' + q.ogni + ' settimane, il ') + nomiG(q.giorni);
+    case 'rotazione': {
+      const n = q.settimane.length;
+      return (n === 1 ? 'Ogni settimana' : n === 2 ? 'A settimane alterne' : 'Schema di ' + n + ' settimane che si ripete');
+    }
+    case 'mensile': {
+      const ogni = q.ogni === 1 ? 'Ogni mese' : 'Ogni ' + q.ogni + ' mesi';
+      if (q.modo === 'giorno') return ogni + (q.giorno === -1 ? ", l'ultimo giorno" : ', il giorno ' + q.giorno);
+      return ogni + ", l'" + ORDINALI[q.n] + ' ' + GIORNI_NOMI[GIORNI.indexOf(q.giornoSett)];
+    }
+    case 'annuale': return 'Ogni anno, il ' + q.giorno + ' ' + MESI_NOMI[q.mese - 1];
+    case 'scadenza': {
+      let s = 'Scade ' + GIORNI_NOMI[giornoSettimana(q.scadenza)] + ' ' + fmtAnno(q.scadenza);
+      if (q.ripeti) s += ', poi ogni ' + quantita(q.ripeti.ogni, q.ripeti.unita);
+      return s;
+    }
+  }
+  return '';
+}
+
+export function descriviAvviso(a) {
+  let quando;
+  if (a.prima === 0) quando = 'il giorno stesso';
+  else if (a.prima === 1 && a.unita === 'giorni') quando = a.ora >= '17:00' ? 'la sera prima' : 'il giorno prima';
+  else quando = quantita(a.prima, a.unita) + ' prima';
+  return quando + ' alle ' + a.ora.replace(/^0/, '');
+}
+
+/** Frase completa: "Ogni martedì. Ti avviso la sera prima alle 19:00." */
+export function riassunto(p) {
+  const av = p.avvisi.length ? 'Ti avviso ' + elenco(p.avvisi.map(descriviAvviso)) + '.' : 'Nessun avviso: lo vedi solo nell\'app e nel calendario.';
+  return descriviQuando(p) + '. ' + av;
+}

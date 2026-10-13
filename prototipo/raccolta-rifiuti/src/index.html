@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d3b2f">
+<title>Raccolta rifiuti</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet">
+<script>
+/* js-yaml incluso nel file in fase di build: l'app funziona offline */
+/*@JSYAML@*/
+</script>
+<style>
+/*@STYLES@*/
+</style>
+</head>
+<body>
+<div id="app" class="wrap">
+  <header class="top">
+    <div class="title-row">
+      <h1 class="app-title" id="hdrTitle">Raccolta rifiuti</h1>
+      <span class="week-badge hidden" id="hdrWeek"></span>
+    </div>
+    <div class="app-sub" id="hdrSub"></div>
+    <nav class="tabs hidden" id="tabs" aria-label="Sezioni">
+      <button data-tab="oggi">Oggi</button>
+      <button data-tab="settimane">Settimane</button>
+      <button data-tab="rifiuti">Rifiuti</button>
+      <button data-tab="eccezioni">Eccezioni</button>
+      <button data-tab="testi">Testi</button>
+      <button data-tab="esporta">Stampa e backup</button>
+    </nav>
+  </header>
+  <main id="view"></main>
+</div>
+<div id="printRoot"></div>
+<input type="file" id="fileInput" accept=".yaml,.yml,.json,.txt,text/plain,application/json" class="hidden">
+
+<script>
+/*@APPJS@*/
+</script>
+</body>
+</html>

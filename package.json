@@ -1,0 +1,16 @@
+{
+  "name": "nomesmentego",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Promemoria periodici per famiglia e amici: bacheche condivise con link segreto, calendario in abbonamento.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler d1 migrations apply DB --local && wrangler dev",
+    "test": "node --test test/*.test.js",
+    "deploy": "wrangler d1 migrations apply DB --remote && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.150.0"
+  },
+  "engines": { "node": ">=20" }
+}

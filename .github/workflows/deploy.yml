@@ -1,0 +1,58 @@
+# Prova il codice e lo pubblica su Cloudflare a ogni push su main.
+# Serve configurare una volta, in Settings › Secrets and variables › Actions:
+#   CLOUDFLARE_API_TOKEN   token con il modello "Edit Cloudflare Workers" + permesso "D1: Edit"
+#   CLOUDFLARE_ACCOUNT_ID  l'id del tuo account Cloudflare
+#   CODICE_INVITO          (facoltativo) parola da chiedere a chi crea una nuova bacheca
+name: Test e pubblicazione
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Database D1 (lo crea la prima volta)
+        run: node scripts/prepara-d1.mjs
+      - name: Aggiorna le tabelle
+        run: npx wrangler d1 migrations apply DB --remote
+      - name: Pubblica
+        run: npx wrangler deploy
+      - name: Codice di invito
+        env:
+          CODICE_INVITO: ${{ secrets.CODICE_INVITO }}
+        run: |
+          if [ -n "$CODICE_INVITO" ]; then
+            printf '%s' "$CODICE_INVITO" | npx wrangler secret put CODICE_INVITO
+          else
+            echo "Nessun codice di invito: chiunque conosca l'indirizzo può creare una bacheca."
+          fi
