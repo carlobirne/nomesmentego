@@ -41,6 +41,40 @@ Il codice è pubblicato in automatico da GitHub a ogni modifica del branch `main
 
 ## Dove sono i dati e chi li vede
 
+```mermaid
+flowchart TB
+  GH["GitHub<br/>codice + Actions"]
+  subgraph U["Chi usa l'app"]
+    BR["Browser<br/>bacheca con link segreto"]
+    CAL["Calendario Apple / Google<br/>abbonato al feed"]
+    TGU["Telegram<br/>comandi e tasto Fatto"]
+  end
+  subgraph CF["Cloudflare, piano gratuito"]
+    W["Worker nomesmentego<br/>pagine · API · feed .ics · webhook"]
+    D1[("Database D1<br/>bacheche e copie<br/>chat, telefoni, email")]
+    CRON["Cron ogni 5 minuti<br/>avvisi da mandare"]
+  end
+  subgraph E["Servizi esterni, solo se attivati"]
+    TAPI["Telegram Bot API"]
+    BREVO["Brevo o Resend"]
+    PUSH["Servizi push<br/>Google · Apple · Mozilla"]
+  end
+  subgraph A["Dove arrivano gli avvisi"]
+    TGA["Chat Telegram"]
+    MAIL["Casella email"]
+    NOT["Notifica sul telefono"]
+  end
+  GH -. "deploy a ogni push su main" .-> W
+  BR --> W
+  CAL --> W
+  TGU --> W
+  W <--> D1
+  CRON --> W
+  W --> TAPI --> TGA
+  W --> BREVO --> MAIL
+  W -- "cifrate" --> PUSH --> NOT
+```
+
 **Non ci sono file di testo**: ogni bacheca è una riga nel database **D1** di Cloudflare (`nomesmentego`),
 sul tuo account. Il telefono non è il "proprietario" dei dati, è solo una finestra sul server.
 
