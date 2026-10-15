@@ -60,4 +60,4 @@ export function caricaScript(src) {
 }
 
 // tavolozza ispirata a Miró: rosso, blu, giallo, verde, nero e qualche terra
-export const COLORI = ['#c8102e', '#1f4aa8', '#f2b705', '#2e7d4f', '#1b1712', '#e0582b', '#6b3fa0', '#7a4a2a', '#2a9d8f', '#d94f8a'];
+export const COLORI = ['#e8231c', '#2e5fa8', '#f6c700', '#2db04b', '#111111', '#e0582b', '#6b3fa0', '#7a4a2a', '#2a9d8f', '#d94f8a'];

@@ -109,7 +109,7 @@ export const primaRevisione = (immatricolazione) => fineMese(piu(immatricolazion
  * @param scadenze  { revisione: 'AAAA-MM-GG', bollo: ..., ... } (le vuote si saltano)
  * @param preavviso giorni del primo avviso (default 20, come nel foglio Google)
  */
-export function creaAuto({ nome, icona = 'auto', colore = '#c8102e', scadenze = {}, preavviso = 20 }) {
+export function creaAuto({ nome, icona = 'auto', colore = '#e8231c', scadenze = {}, preavviso = 20 }) {
   const gruppo = { id: nuovoId('g'), nome: nome || 'Auto', icona, colore };
   const promemoria = VOCI_AUTO.filter((v) => valida(scadenze[v.id])).map((v) => ({
     id: nuovoId('p'),
