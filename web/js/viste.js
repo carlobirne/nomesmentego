@@ -48,7 +48,13 @@ export function vistaHome() {
   const r = recenti();
   let h = '<section class="card intro">' + SCENE.home + '<h1 class="motto">par non desmentegarse de niente</h1>' +
     '<p class="sottotitolo">Cosa, quando, ogni quanto?</p>' +
-    '<p>I giorni della settimana di mercato, pagare il bollo, portare fuori la spazzatura, le medicine…: li imposti una volta e arrivano da soli sul calendario del telefono.</p>' +
+    '<p>I giorni della settimana di mercato, pagare il bollo, portare fuori la spazzatura, le medicine…: li imposti una volta e te li ricorda lui.</p>' +
+    '<ol class="passi-home">' +
+    '<li><span class="n">1</span><div><b>Crea la tua bacheca</b>: dalle un nome qui sotto.</div></li>' +
+    '<li><span class="n">2</span><div><b>Scegli cosa ricordare</b> (spazzatura, mercato, auto, scadenze…) e <b>personalizzalo</b>: giorni, orari, quanto prima avvisarti.</div></li>' +
+    '<li><span class="n">3</span><div><b>Scegli come ricevere gli avvisi</b>: calendario del telefono, notifiche dell\'app, Telegram o mail.</div></li>' +
+    '<li><span class="n">4</span><div><b>Condividi la bacheca</b> con chi non deve smentegarse le stesse cose.</div></li>' +
+    '</ol>' +
     '<p class="muted small">Niente account e niente password: ogni bacheca ha il suo link segreto. Chi ha il link la vede e la modifica dal browser.</p></section>';
   h += '<section class="card"><h2>Crea una bacheca</h2><div class="stack">' +
     '<label class="field">Come la chiamiamo?<input type="text" id="nomeNuova" class="grande" placeholder="es. I miei promemoria settimanali" maxlength="60"></label>' +
