@@ -58,7 +58,7 @@ document.addEventListener('click', async (ev) => {
   const fn = AZIONI[el.dataset.act] || AZIONI_EDITOR[el.dataset.act];
   if (!fn) return;
   ev.preventDefault();
-  if (!['ripristina', 'rigenera', 'gruppo-del', 'ed-elimina', 'ed-sett-del', 'tg-togli'].includes(el.dataset.act) && !el.dataset.act.endsWith('-ok')) S.ui.conferma = null;
+  if (!['ripristina', 'rigenera', 'gruppo-del', 'ed-elimina', 'ed-sett-del', 'tg-togli', 'push-togli', 'email-togli'].includes(el.dataset.act) && !el.dataset.act.endsWith('-ok')) S.ui.conferma = null;
   try { await fn(el, ev); } catch (e) { console.error(e); toast('Qualcosa non ha funzionato: ' + e.message); }
 });
 
@@ -92,6 +92,9 @@ window.addEventListener('beforeunload', (ev) => {
 });
 
 /* ---------- avvio ---------- */
+// service worker: serve solo per ricevere le notifiche dell'app
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
 (async function avvio() {
   if (!m) {
     render();
@@ -99,6 +102,17 @@ window.addEventListener('beforeunload', (ev) => {
     return;
   }
   const [, tipo, token] = m;
+  // chi ha anche il link di modifica di questa bacheca (es. arriva da una notifica) torna lì
+  if (tipo === 'v') {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k.startsWith('nms.cache.')) continue;
+        const c = JSON.parse(localStorage.getItem(k));
+        if (c?.permesso === 'modifica' && c.lettura === token) { location.replace('/b/' + k.slice(10) + location.hash); return; }
+      }
+    } catch { /* archiviazione non disponibile */ }
+  }
   // "Aggiungi a schermata Home" deve riaprire questa bacheca, non la pagina iniziale
   $('#manifest').href = '/manifest/' + tipo + '/' + token;
   leggiHash();

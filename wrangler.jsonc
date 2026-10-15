@@ -9,7 +9,7 @@
     "directory": "web",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/feed/*", "/manifest/*", "/telegram/*"]
+    "run_worker_first": ["/api/*", "/feed/*", "/manifest/*", "/telegram/*", "/email/*"]
   },
   "d1_databases": [
     {
@@ -20,7 +20,7 @@
       "migrations_dir": "migrations"
     }
   ],
-  // ogni 5 minuti il Worker manda gli avvisi su Telegram (se il bot è configurato)
+  // ogni 5 minuti il Worker manda gli avvisi: Telegram, notifiche dell'app, email
   "triggers": { "crons": ["*/5 * * * *"] },
   "observability": { "enabled": true }
 }

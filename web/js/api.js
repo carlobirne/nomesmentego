@@ -30,6 +30,22 @@ export const api = {
   telegramProva: (token) => chiama('POST', '/api/b/' + token + '/telegram/prova'),
   telegramFiltro: (token, chat, filtro) => chiama('PUT', '/api/b/' + token + '/telegram/' + encodeURIComponent(chat), { filtro }),
   telegramTogli: (token, chat) => chiama('DELETE', '/api/b/' + token + '/telegram/' + encodeURIComponent(chat)),
+  pushChiave: (token) => chiama('GET', '/api/b/' + token + '/push/chiave'),
+  pushIscrivi: (token, abbonamento, nome) => chiama('POST', '/api/b/' + token + '/push', { abbonamento, nome }),
+  pushMio: (token, endpoint) => chiama('POST', '/api/b/' + token + '/push/mio', { endpoint }),
+  pushVia: (token, endpoint) => chiama('POST', '/api/b/' + token + '/push/via', { endpoint }),
+  pushProva: (token, endpoint) => chiama('POST', '/api/b/' + token + '/push/prova', { endpoint }),
+  pushElenco: (token) => chiama('GET', '/api/b/' + token + '/push'),
+  pushFiltro: (token, id, filtro) => chiama('PUT', '/api/b/' + token + '/push/' + id, { filtro }),
+  pushTogli: (token, id) => chiama('DELETE', '/api/b/' + token + '/push/' + id),
+  email: (token) => chiama('GET', '/api/b/' + token + '/email'),
+  emailAggiungi: (token, indirizzo, nome) => chiama('POST', '/api/b/' + token + '/email', { indirizzo, nome }),
+  emailModello: (token, oggetto, corpo) => chiama('PUT', '/api/b/' + token + '/email/modello', { oggetto, corpo }),
+  emailAnteprima: (token, oggetto, corpo) => chiama('POST', '/api/b/' + token + '/email/anteprima', { oggetto, corpo }),
+  emailProva: (token) => chiama('POST', '/api/b/' + token + '/email/prova'),
+  emailConferma: (token, id) => chiama('POST', '/api/b/' + token + '/email/' + id + '/conferma'),
+  emailFiltro: (token, id, filtro) => chiama('PUT', '/api/b/' + token + '/email/' + id, { filtro }),
+  emailTogli: (token, id) => chiama('DELETE', '/api/b/' + token + '/email/' + id),
 };
 
 /* bacheche aperte su questo dispositivo, per ritrovarle dalla pagina iniziale */

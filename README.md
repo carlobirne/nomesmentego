@@ -11,6 +11,10 @@ scadenze dell'auto, medicine, compleanni. Si configura dal browser e gli avvisi 
 - **Giorni speciali**: festività, recuperi, un giorno in più o in meno.
 - **Calendario in abbonamento**: un tocco per aggiungerlo a Calendario di iPhone o Google Calendar; le modifiche
   si aggiornano da sole.
+- **Notifiche dell'app**: gli avvisi arrivano come notifiche sul telefono, senza installare niente
+  (Android con Chrome; su iPhone dall'icona sulla schermata Home, iOS 16.4 o successivo).
+- **Email**: un elenco di indirizzi per bacheca, con oggetto e testo personalizzabili; ogni indirizzo conferma
+  con un clic prima di ricevere e può disiscriversi da ogni email.
 - **Avvisi su Telegram**: un bot manda i promemoria in chat (anche in un gruppo di famiglia), all'ora di ogni avviso,
   con il tasto **Fatto** per le scadenze; per ogni chat si scelgono i gruppi da ricevere (es. la Passat a tre persone,
   la Puma a una sola).
@@ -55,6 +59,41 @@ Il codice è pubblicato in automatico da GitHub a ogni modifica del branch `main
 Poi apri l'indirizzo, crea la bacheca, aggiungi i promemoria e, nella scheda **Telefono e condivisione**:
 aggiungi il calendario al telefono e manda il link a chi serve.
 
+## Notifiche dell'app (niente da configurare)
+
+Nella scheda **Telefono e condivisione › Notifiche dell'app** tocca **Attiva le notifiche su questo telefono** e
+rispondi **Consenti**. Funziona anche con il link di sola lettura, quindi chiunque abbia la bacheca può attivarle
+sul proprio telefono.
+- **Android**: con Chrome (o Edge, Samsung Internet, Firefox) direttamente dal browser.
+- **iPhone/iPad**: solo dall'icona sulla schermata Home (Safari › Condividi › Aggiungi alla schermata Home),
+  con iOS 16.4 o successivo. L'app lo spiega da sola quando serve.
+
+Le chiavi di sicurezza (VAPID) le crea il server al primo uso e le salva nel database. Se un telefono revoca il
+permesso, viene tolto da solo.
+
+## Email (facoltativo, ~10 minuti)
+
+Per mandare email serve un servizio di invio. Consiglio **[Brevo](https://www.brevo.com)**: è gratuito fino a
+300 email al giorno e non richiede un dominio.
+1. Crea un account Brevo. In *Senders, Domains & Dedicated IPs › Senders* aggiungi l'indirizzo da cui partono le
+   email (anche il tuo Gmail) e confermalo dal link che ricevi.
+2. In *SMTP & API › API Keys* crea una chiave API.
+3. Su GitHub aggiungi i segreti `BREVO_API_KEY` (la chiave) ed `EMAIL_MITTENTE` (l'indirizzo verificato).
+   È facoltativo `EMAIL_NOME`, il nome che compare come mittente (es. "Promemoria di famiglia").
+4. Rilancia il workflow. Il passo **Email** carica i segreti su Cloudflare.
+
+In alternativa a Brevo puoi usare [Resend](https://resend.com) con `RESEND_API_KEY`: in quel caso serve un
+dominio verificato per scrivere a indirizzi diversi dal tuo.
+
+Nell'app, in **Telefono e condivisione › Avvisi via email**:
+- aggiungi gli indirizzi: ognuno riceve un'email di conferma e solo dopo il clic riceve i promemoria;
+- scegli per ognuno quali gruppi riceve;
+- in *Oggetto e testo dell'email* personalizzi i messaggi con parole che si riempiono da sole: `{testo}`,
+  `{promemoria}`, `{voci}`, `{gruppo}`, `{data}`, `{quando}`, `{ripetizione}`, `{nota}`, `{bacheca}`.
+
+In fondo a ogni email c'è sempre il link alla bacheca e quello per non riceverle più. Se usi un indirizzo Gmail
+come mittente, le prime email possono finire nello spam: segnale come "non spam".
+
 ## Avvisi su Telegram (facoltativo, ~5 minuti)
 
 1. Su Telegram apri **@BotFather**, scrivi `/newbot`, scegli un nome (es. "Promemoria di famiglia") e un nome
@@ -67,7 +106,7 @@ aggiungi il calendario al telefono e manda il link a chi serve.
    tocca **Avvia** e torna nell'app. Per un gruppo: **Collega un gruppo Telegram** e scegli il gruppo.
 
 Come funziona: ogni 5 minuti un *Cron Trigger* del Worker calcola gli avvisi scattati dall'ultimo giro (nell'ora
-locale della bacheca) e li manda alle chat collegate. Il tasto **Fatto** compare solo nelle chat collegate da chi
+locale della bacheca) e li manda alle chat collegate. Lo stesso giro manda le notifiche dell'app e le email. Il tasto **Fatto** compare solo nelle chat collegate da chi
 ha il link di modifica. Se una chat blocca il bot o lo toglie dal gruppo, viene scollegata da sola.
 Comandi del bot: `/oggi` (cosa c'è oggi) e `/stop` (smetti di ricevere).
 
@@ -100,7 +139,11 @@ web/                 l'app, servita così com'è (niente build)
     editor.js          editor guidato di un promemoria
   css/app.css        stile chiaro/scuro + stampa
 worker/              Cloudflare Worker: API, feed /feed/<token>.ics, manifest per la schermata Home
+  giro.js              parti comuni dei canali: quali avvisi mandare a chi dall'ultimo giro
   telegram.js          bot Telegram: collegamento delle chat, comandi, tasto "Fatto", invio periodico
+  push.js              notifiche dell'app: cifratura RFC 8291, firma VAPID, abbonamenti
+  email.js             email: Brevo/Resend, conferma e disiscrizione, modello del messaggio
+web/sw.js            service worker: riceve le notifiche e apre la bacheca
 migrations/          tabelle del database D1
 test/                node --test
 docs/                proposta ed esempi
@@ -121,6 +164,13 @@ prototipo/           la vecchia app "Raccolta rifiuti" da cui siamo partiti
 | `POST` | `/api/b/<token>/telegram/collega` | codice usa-e-getta (vale un'ora) → link `t.me/<bot>?start=…` |
 | `PUT`/`DELETE` | `/api/b/<token>/telegram/<chat>` | gruppi ricevuti dalla chat (`{filtro}`), oppure scollega |
 | `POST` | `/api/b/<token>/telegram/prova` | messaggio di prova a tutte le chat |
+| `GET` | `/api/b/<token>/push/chiave` | chiave pubblica VAPID (creata al primo uso) |
+| `POST` | `/api/b/<token>/push[/mio\|/via\|/prova]` | abbona questo telefono (`{abbonamento, nome}`), controlla, toglie, prova |
+| `GET`/`PUT`/`DELETE` | `/api/b/<token>/push[/<id>]` | telefoni abbonati e loro filtro (solo chi può modificare) |
+| `GET`/`POST` | `/api/b/<token>/email` | destinatari e modello; aggiungi un indirizzo (manda la conferma) |
+| `PUT` | `/api/b/<token>/email/modello` | oggetto e testo (`{oggetto, corpo}` con i segnaposto) |
+| `POST` | `/api/b/<token>/email/anteprima\|prova` | anteprima con dati d'esempio; email di prova agli indirizzi confermati |
+| `GET`/`POST` | `/email/conferma/<token>`, `/email/stop/<token>` | pagine per confermare o disiscriversi (serve il pulsante) |
 | `POST` | `/telegram/webhook` | aggiornamenti da Telegram (verificati con il segreto derivato dal token) |
 
 Il link di modifica è salvato nel database solo come impronta SHA-256. Il server normalizza ogni bacheca
@@ -128,5 +178,5 @@ con lo stesso codice dell'app (`web/core/modello.js`), quindi non accetta dati m
 
 ## Prossimi passi
 
-**Email**: stesso giro periodico di Telegram (`inviaAvvisi` in `worker/telegram.js`), con un servizio di invio
-(es. Cloudflare Email o un provider SMTP via API) e gli indirizzi delle `persone` del modello.
+Idee: tasto "Fatto" anche nelle notifiche dell'app e nelle email, riepilogo settimanale via email,
+calendari comunali della raccolta rifiuti già pronti.

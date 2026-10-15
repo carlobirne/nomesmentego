@@ -4,6 +4,9 @@
 #   CLOUDFLARE_ACCOUNT_ID  l'id del tuo account Cloudflare
 #   CODICE_INVITO          (facoltativo) parola da chiedere a chi crea una nuova bacheca
 #   TELEGRAM_BOT_TOKEN     (facoltativo) token del bot creato con @BotFather: attiva gli avvisi su Telegram
+#   BREVO_API_KEY          (facoltativo) chiave API di Brevo per mandare le email (oppure RESEND_API_KEY)
+#   EMAIL_MITTENTE         (con la chiave sopra) indirizzo mittente verificato sul servizio di invio
+#   EMAIL_NOME             (facoltativo) nome del mittente, es. "Promemoria di famiglia"
 name: Test e pubblicazione
 
 on:
@@ -69,6 +72,24 @@ jobs:
             printf '%s' "$CODICE_INVITO" | npx wrangler secret put CODICE_INVITO
           else
             echo "Nessun codice di invito: chiunque conosca l'indirizzo può creare una bacheca."
+          fi
+      - name: Email
+        env:
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_MITTENTE: ${{ secrets.EMAIL_MITTENTE }}
+          EMAIL_NOME: ${{ secrets.EMAIL_NOME }}
+        run: |
+          caricati=0
+          for nome in BREVO_API_KEY RESEND_API_KEY EMAIL_MITTENTE EMAIL_NOME; do
+            valore="${!nome}"
+            if [ -n "$valore" ]; then printf '%s' "$valore" | npx wrangler secret put "$nome" > /dev/null && caricati=$((caricati+1)); fi
+          done
+          if [ -n "$EMAIL_MITTENTE" ] && { [ -n "$BREVO_API_KEY" ] || [ -n "$RESEND_API_KEY" ]; }; then
+            echo "Email attive (mittente $EMAIL_MITTENTE)."
+            echo "Email: attive, mittente **$EMAIL_MITTENTE**" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Email non configurate: servono EMAIL_MITTENTE e BREVO_API_KEY (o RESEND_API_KEY)."
           fi
       - name: Bot Telegram
         env:

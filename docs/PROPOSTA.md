@@ -8,7 +8,7 @@
 > (si aggiunge alla schermata Home); avvisi tramite **calendario in abbonamento**. Rispetto alla bozza sotto,
 > "categorie" e "oggetti" sono diventati un unico concetto, i **gruppi** (es. "Passat", "Casa"), e la regola di
 > ripetizione delle scadenze ha `da: fatto | scadenza`. Fase 3: **Telegram** fatto (bot con collegamento a codice,
-> invio ogni 5 minuti, tasto "Fatto", filtro per gruppi); prossimo passo: **email**.
+> invio ogni 5 minuti, tasto "Fatto", filtro per gruppi); poi **notifiche dell'app** (Web Push) ed **email** (Brevo/Resend, con conferma dell'indirizzo).
 
 Punto di partenza: il prototipo [`prototipo/raccolta-rifiuti`](../prototipo/raccolta-rifiuti) (single-file HTML,
 offline, `localStorage`, rotazione su N settimane, eccezioni, foglio A4, export `.ics`, backup YAML).
