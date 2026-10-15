@@ -188,9 +188,10 @@ export async function gestisci(request, env, archivio = new ArchivioD1(env.DB), 
         start_url: '/' + parti[1] + '/' + parti[2], scope: '/', display: 'standalone',
         background_color: '#efe6d2', theme_color: '#efe6d2',
         icons: [
-          { src: '/icone/icona.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: '/icone/icona-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icone/icona-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/icone/icona-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icone/icona-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icone/icona-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: '/icone/creatura.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
       }), { headers: { 'content-type': 'application/manifest+json', 'cache-control': 'no-store' } });
     }

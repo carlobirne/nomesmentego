@@ -9,7 +9,9 @@
 <meta name="apple-mobile-web-app-title" content="Promemoria">
 <title>Nomesmentego</title>
 <meta name="description" content="Promemoria periodici per la famiglia: spazzatura, auto, scadenze, mercato. Sul calendario del telefono.">
-<link rel="icon" href="/icone/icona.svg" type="image/svg+xml">
+<link rel="icon" href="/icone/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/icone/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/icone/favicon-16.png" sizes="16x16" type="image/png">
 <link rel="apple-touch-icon" href="/icone/icona-180.png">
 <link id="manifest" rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,17 +20,10 @@
 <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
-<!-- filtro che rende irregolare il tratto dei disegni, come a mano -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <filter id="schizzo" x="-10%" y="-10%" width="120%" height="120%">
-    <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="7" result="rumore"/>
-    <feDisplacementMap in="SourceGraphic" in2="rumore" scale="2.4" xChannelSelector="R" yChannelSelector="G"/>
-  </filter>
-</svg>
 <div id="app" class="wrap">
   <header class="top">
     <div class="title-row">
-      <a class="app-title" id="titoloLink" href="/"><svg class="disegno marchio" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><g fill="none" stroke="var(--tratto)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 24Q24 8 42 24Q24 40 6 24Z" fill="var(--carta)"/><circle cx="24" cy="24" r="6" fill="var(--m-rosso)"/><circle cx="25" cy="25" r="2.4" fill="var(--pupilla)" stroke="none"/><path d="M24 10V4M14 12.5L11 8M34 12.5L37 8"/></g></svg><span id="titolo">Nomesmentego</span></a>
+      <a class="app-title" id="titoloLink" href="/"><img class="marchio" src="/icone/logo.svg" alt="" width="30" height="40"><span id="titolo">Nomesmentego</span></a>
       <span class="stato-salvataggio" id="statoSalvataggio" role="status" aria-live="polite"></span>
     </div>
     <nav class="tabs hidden" id="schede" aria-label="Sezioni">

@@ -1,9 +1,9 @@
 /* Nomesmentego: carta crema, tratto nero a mano libera e colori primari, come nei quadri di Miró. */
 :root{
-  --m-rosso:#c8102e; --m-blu:#1f4aa8; --m-giallo:#f2b705; --m-verde:#2e7d4f;
-  --carta:#fbf6ea; --pupilla:#1b1712;
+  --m-rosso:#e8231c; --m-blu:#2e5fa8; --m-giallo:#f6c700; --m-verde:#2db04b;
+  --carta:#fbf6ea; --pupilla:#111111;
   --bg:#efe6d2; --surface:#fbf6ea; --surface-2:#f4ecda; --ink:#1b1712; --muted:#5b5144;
-  --line:#1b1712; --tratto:#1b1712; --ombra:#1b1712;
+  --line:#111111; --tratto:#111111; --ombra:#111111;
   --accent:var(--m-blu); --accent-ink:#fbf6ea; --su-blu:#fbf6ea; --focus:var(--m-rosso);
   --red:#9d0c22; --red-bg:#f8d5d2; --amber:#5f4300; --amber-bg:#fbe39a; --green:#1f5a37; --green-bg:#d3e8d6;
   --font-body:'Atkinson Hyperlegible','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
@@ -18,7 +18,7 @@
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --m-rosso:#ef4a5c; --m-blu:#3f6fd8; --m-giallo:#ffc93c; --m-verde:#45a872;
+    --m-rosso:#ff4a3d; --m-blu:#5b8be0; --m-giallo:#ffd21f; --m-verde:#3fca62;
     --carta:#f6efdf;
     --bg:#11152a; --surface:#1a1f38; --surface-2:#232a48; --ink:#f1e8d4; --muted:#bdb4a0;
     --line:#e9dfc9; --tratto:#f1e8d4; --ombra:#05070f;
@@ -28,7 +28,7 @@
   }
 }
 :root[data-theme="dark"]{
-  --m-rosso:#ef4a5c; --m-blu:#3f6fd8; --m-giallo:#ffc93c; --m-verde:#45a872;
+  --m-rosso:#ff4a3d; --m-blu:#5b8be0; --m-giallo:#ffd21f; --m-verde:#3fca62;
   --carta:#f6efdf;
   --bg:#11152a; --surface:#1a1f38; --surface-2:#232a48; --ink:#f1e8d4; --muted:#bdb4a0;
   --line:#e9dfc9; --tratto:#f1e8d4; --ombra:#05070f;
@@ -52,14 +52,17 @@ a{color:inherit}
 
 /* ---------- disegni ---------- */
 svg.disegno{display:inline-block;flex:0 0 auto;overflow:visible}
-svg.disegno > g{filter:url(#schizzo)}
 svg.disegno.mini{width:24px;height:24px;vertical-align:-6px}
 svg.disegno.medio{width:44px;height:44px}
 svg.disegno.grande{width:58px;height:58px}
 svg.disegno.titolo{width:34px;height:34px;vertical-align:-8px;margin-right:6px}
 svg.disegno.scena{display:block;width:100%;max-width:360px;height:auto;margin:0 auto 6px}
 svg.disegno.scena.piccola{max-width:150px}
-svg.disegno.marchio{width:34px;height:34px}
+img.marchio{width:30px;height:40px;flex:0 0 auto;object-fit:contain}
+.scena-home{display:block;width:min(240px,60vw);height:auto;margin:0 auto 10px;border:3px solid var(--line);border-radius:28px 10px 32px 12px / 12px 30px 10px 28px}
+.scena-vuoto{display:block;width:96px;height:auto;margin:0 auto 6px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) img.marchio,:root:not([data-theme="light"]) .scena-vuoto{background:var(--carta);border-radius:14px;padding:2px}}
+:root[data-theme="dark"] img.marchio,:root[data-theme="dark"] .scena-vuoto{background:var(--carta);border-radius:14px;padding:2px}
 
 /* ---------- testata ---------- */
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:10px 0 0}

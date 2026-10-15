@@ -85,10 +85,10 @@ export function componi(modello, v, { link, disiscrivi }) {
   const corpo = pulisci(riempi(modello.corpo || MODELLO_PREDEFINITO.corpo, v));
   const piede = [link ? 'Apri la bacheca: ' + link : '', disiscrivi ? 'Non vuoi più ricevere queste email? ' + disiscrivi : ''].filter(Boolean);
   const testo = corpo + '\n\n--\n' + v.bacheca + '\n' + piede.join('\n');
-  const html = '<!doctype html><html><body style="margin:0;background:#efe6d2;padding:24px 12px;font-family:Atkinson Hyperlegible,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1b1712">' +
-    '<div style="max-width:560px;margin:0 auto;background:#fbf6ea;border:2px solid #1b1712;border-radius:18px 6px 22px 8px;padding:22px">' +
+  const html = '<!doctype html><html><body style="margin:0;background:#efe6d2;padding:24px 12px;font-family:Atkinson Hyperlegible,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111111">' +
+    '<div style="max-width:560px;margin:0 auto;background:#fbf6ea;border:2px solid #111111;border-radius:18px 6px 22px 8px;padding:22px">' +
     '<div style="font-size:17px;line-height:1.5">' + htmlEsc(corpo).replace(/\n/g, '<br>') + '</div>' +
-    (link ? '<p style="margin:22px 0 0"><a href="' + htmlEsc(link) + '" style="display:inline-block;background:#1f4aa8;color:#fbf6ea;text-decoration:none;font-weight:700;padding:10px 18px;border:2px solid #1b1712;border-radius:999px">Apri la bacheca</a></p>' : '') +
+    (link ? '<p style="margin:22px 0 0"><a href="' + htmlEsc(link) + '" style="display:inline-block;background:#2e5fa8;color:#fbf6ea;text-decoration:none;font-weight:700;padding:10px 18px;border:2px solid #111111;border-radius:999px">Apri la bacheca</a></p>' : '') +
     '</div><p style="max-width:560px;margin:14px auto 0;font-size:13px;color:#5b5144">' + htmlEsc(v.bacheca) +
     (disiscrivi ? ' · <a href="' + htmlEsc(disiscrivi) + '" style="color:#5b5144">non ricevere più queste email</a>' : '') + '</p></body></html>';
   return { oggetto, testo, html };
@@ -133,10 +133,10 @@ async function mandaConferma(posta, riga, bacheca, origine) {
   const link = origine + '/email/conferma/' + riga.token;
   const testo = 'Ciao,\n\nqualcuno vuole mandarti a questo indirizzo i promemoria della bacheca "' + bacheca.nome + '" (spazzatura, scadenze, appuntamenti…).\n\n' +
     'Per riceverli conferma qui:\n' + link + '\n\nSe non sai di cosa si tratta ignora questa email: non riceverai niente.';
-  const html = '<!doctype html><html><body style="font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#efe6d2;padding:24px 12px;color:#1b1712">' +
-    '<div style="max-width:520px;margin:0 auto;background:#fbf6ea;border:2px solid #1b1712;border-radius:18px;padding:22px;font-size:17px;line-height:1.5">' +
+  const html = '<!doctype html><html><body style="font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#efe6d2;padding:24px 12px;color:#111111">' +
+    '<div style="max-width:520px;margin:0 auto;background:#fbf6ea;border:2px solid #111111;border-radius:18px;padding:22px;font-size:17px;line-height:1.5">' +
     '<p>Ciao,</p><p>qualcuno vuole mandarti a questo indirizzo i promemoria della bacheca <b>' + htmlEsc(bacheca.nome) + '</b>.</p>' +
-    '<p><a href="' + htmlEsc(link) + '" style="display:inline-block;background:#1f4aa8;color:#fbf6ea;text-decoration:none;font-weight:700;padding:10px 18px;border:2px solid #1b1712;border-radius:999px">Sì, voglio ricevere i promemoria</a></p>' +
+    '<p><a href="' + htmlEsc(link) + '" style="display:inline-block;background:#2e5fa8;color:#fbf6ea;text-decoration:none;font-weight:700;padding:10px 18px;border:2px solid #111111;border-radius:999px">Sì, voglio ricevere i promemoria</a></p>' +
     '<p style="font-size:14px;color:#5b5144">Se non sai di cosa si tratta ignora questa email: non riceverai niente.</p></div></body></html>';
   await posta.invia({ a: riga.destinazione, oggetto: 'Conferma: promemoria di "' + bacheca.nome + '"', testo, html });
 }
@@ -213,10 +213,10 @@ export async function apiEmail({ request, url, metodo, sotto, azione2, riga, per
 
 function pagina(titolo, testo, bottone) {
   return new Response('<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>' + htmlEsc(titolo) + '</title></head>' +
-    '<body style="margin:0;background:#efe6d2;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1b1712;padding:32px 16px">' +
-    '<div style="max-width:480px;margin:0 auto;background:#fbf6ea;border:2px solid #1b1712;border-radius:18px 6px 22px 8px;padding:24px;font-size:18px;line-height:1.5">' +
+    '<body style="margin:0;background:#efe6d2;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111111;padding:32px 16px">' +
+    '<div style="max-width:480px;margin:0 auto;background:#fbf6ea;border:2px solid #111111;border-radius:18px 6px 22px 8px;padding:24px;font-size:18px;line-height:1.5">' +
     '<h1 style="font-size:26px;margin:0 0 12px">' + htmlEsc(titolo) + '</h1><p>' + testo + '</p>' +
-    (bottone ? '<form method="post"><button style="font:inherit;font-weight:700;background:#1f4aa8;color:#fbf6ea;border:2px solid #1b1712;border-radius:999px;padding:12px 22px;cursor:pointer">' + htmlEsc(bottone) + '</button></form>' : '') +
+    (bottone ? '<form method="post"><button style="font:inherit;font-weight:700;background:#2e5fa8;color:#fbf6ea;border:2px solid #111111;border-radius:999px;padding:12px 22px;cursor:pointer">' + htmlEsc(bottone) + '</button></form>' : '') +
     '</div></body></html>', { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } });
 }
 
