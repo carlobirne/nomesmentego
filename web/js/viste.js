@@ -197,15 +197,24 @@ export function vistaAuto() {
   let h = '<section class="card"><div class="passo"><span class="n">1</span><h2>Quale auto?</h2></div>' +
     '<label class="field">Nome o modello<input type="text" class="grande" data-bind="auto-nome" value="' + esc(a.nome) + '" placeholder="es. Panda"></label>' +
     '<div class="small" style="font-weight:700;margin:12px 0 6px">Colore</div><div class="colori-pick" role="group" aria-label="Colore">' + COLORI.slice(0, 8).map((c) => '<button data-act="auto-colore" data-v="' + c + '" aria-pressed="' + (a.colore === c) + '" style="background:' + c + '" aria-label="Colore ' + c + '"></button>').join('') + '</div></section>';
-  h += '<section class="card"><div class="passo"><span class="n">2</span><h2>Le scadenze</h2></div><p class="muted small">Copiale dai documenti. Se una non la sai, lasciala vuota: potrai aggiungerla dopo.</p>';
-  h += '<div class="notice small" style="margin-bottom:10px"><label class="field">Data di immatricolazione (facoltativa)<span class="aiuto">Se l\'auto ha meno di 4 anni calcolo io la prima revisione.</span><input type="date" data-bind="auto-immatricolazione" value="' + esc(a.immatricolazione) + '"></label></div>';
+  const facoltativa = '<span class="facoltativo">facoltativa</span>';
+  const svuota = (act, k) => '<button class="btn ghost piccolo" data-act="' + act + '"' + (k ? ' data-k="' + k + '"' : '') + '>Svuota</button>';
+  h += '<section class="card"><div class="passo"><span class="n">2</span><h2>Le scadenze</h2></div>' +
+    '<p class="notice small"><b>Tutte le date sono facoltative.</b> Compila solo quelle che vuoi ricordare, copiandole dai documenti: le altre lasciale vuote e non diventano promemoria. Potrai sempre aggiungerle dopo.</p>';
+  h += '<div class="riga-ed"><label class="field"><span>Data di immatricolazione ' + facoltativa + '</span><span class="aiuto">Se l\'auto ha meno di 4 anni calcolo io la prima revisione.</span><input type="date" data-bind="auto-immatricolazione" value="' + esc(a.immatricolazione) + '"></label>' +
+    (a.immatricolazione ? svuota('auto-svuota-imm') : '') + '</div>';
   for (const v of VOCI_AUTO) {
-    h += '<div class="riga-ed"><label class="field">' + esc(v.nome) + '<span class="aiuto">' + esc(v.aiuto) + '</span><input type="date" data-bind="auto-scadenza" data-k="' + v.id + '" value="' + esc(a.scadenze[v.id] || '') + '"></label></div>';
+    h += '<div class="riga-ed"><label class="field"><span>' + esc(v.nome) + ' ' + facoltativa + '</span><span class="aiuto">' + esc(v.aiuto) + '</span><input type="date" data-bind="auto-scadenza" data-k="' + v.id + '" value="' + esc(a.scadenze[v.id] || '') + '"></label>' +
+      (a.scadenze[v.id] ? svuota('auto-svuota', v.id) : '') + '</div>';
   }
   h += '</section><section class="card"><div class="passo"><span class="n">3</span><h2>Quanto prima avvisarti?</h2></div>' +
     '<label class="field">Primo avviso<select data-bind="auto-preavviso">' + [7, 15, 20, 30, 45, 60].map((n) => '<option value="' + n + '"' + (n === a.preavviso ? ' selected' : '') + '>' + n + ' giorni prima</option>').join('') + '</select></label>' +
     '<p class="small muted" style="margin:8px 0 0">Poi ti avviso anche una settimana prima e il giorno stesso. Se la scadenza passa e non premi "Fatto", te lo ricordo ogni 3 giorni.</p></section>';
-  h += '<div class="barra-salva"><button class="btn primary big" data-act="auto-crea">Crea i promemoria</button><a class="btn ghost" href="#nuovo">Annulla</a></div>';
+  const scelte = VOCI_AUTO.filter((v) => valida(a.scadenze[v.id] || ''));
+  h += '<p class="riassunto">' + (scelte.length
+    ? 'Creerò ' + (scelte.length === 1 ? '1 promemoria' : scelte.length + ' promemoria') + ': ' + esc(scelte.map((v) => v.nome).join(', ')) + '.'
+    : 'Inserisci almeno una data per creare i promemoria.') + '</p>';
+  h += '<div class="barra-salva"><button class="btn primary big" data-act="auto-crea"' + (scelte.length ? '' : ' disabled') + '>Crea ' + (scelte.length === 1 ? 'il promemoria' : 'i promemoria') + '</button><a class="btn ghost" href="#nuovo">Annulla</a></div>';
   return h;
 }
 
@@ -538,6 +547,8 @@ export const AZIONI = {
     location.hash = '#modifica/' + S.bozza.id;
   },
   'auto-colore'(el) { S.ui.auto.colore = el.dataset.v; render(); },
+  'auto-svuota'(el) { delete S.ui.auto.scadenze[el.dataset.k]; render(); },
+  'auto-svuota-imm'() { S.ui.auto.immatricolazione = ''; render(); },
   'auto-crea'() {
     const a = S.ui.auto;
     if (!a.nome.trim()) { toast('Scrivi il nome dell\'auto.'); return; }
@@ -703,7 +714,7 @@ export const LEGAMI = {
   'email-corpo'(el) { S.ui.email.bozza.corpo = el.value; },
   'schema-settimane'(el) { S.ui.settimane = +el.value; return true; },
   'auto-nome'(el) { S.ui.auto.nome = el.value; },
-  'auto-scadenza'(el) { S.ui.auto.scadenze[el.dataset.k] = el.value; },
+  'auto-scadenza'(el) { S.ui.auto.scadenze[el.dataset.k] = el.value; return true; },
   'auto-preavviso'(el) { S.ui.auto.preavviso = +el.value; },
   'auto-immatricolazione'(el) {
     const a = S.ui.auto;
