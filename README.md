@@ -102,11 +102,11 @@ all'account Cloudflare vede il database.
 - Senza link non si arriva a nessuna bacheca: non esiste un elenco pubblico e il server non ha un
   comando per cancellarle.
 - Per **crearne** una nuova serve il codice di invito (`CODICE_INVITO`), se impostato.
-- Se un link finisce nelle mani sbagliate: *Telefono e condivisione › Cambia i link*. Quello vecchio
+- Se un link finisce nelle mani sbagliate: *Notifiche e condivisione › Cambia i link*. Quello vecchio
   smette subito di funzionare.
 
 **Copie e cancellazione**
-- *Telefono e condivisione › Copie di sicurezza*: ripristino di una versione precedente, oppure
+- *Notifiche e condivisione › Copie di sicurezza*: ripristino di una versione precedente, oppure
   *Scarica una copia* (file `.json`, reimportabile con *Importa da file*).
 - Per eliminare davvero una bacheca oggi si passa dalla console D1:
   `DELETE FROM bacheche WHERE id = '…'`. Le righe collegate (storico, Telegram, notifiche, email) si
@@ -136,12 +136,12 @@ all'account Cloudflare vede il database.
    dell'esecuzione (*Actions* › l'ultima esecuzione: riquadro **App pubblicata** e link sul job *deploy*)
    e nella colonna di destra della pagina del repository, sotto **Deployments › produzione**.
 
-Poi apri l'indirizzo, crea la bacheca, aggiungi i promemoria e, nella scheda **Telefono e condivisione**:
+Poi apri l'indirizzo, crea la bacheca, aggiungi i promemoria e, nella scheda **Notifiche e condivisione**:
 aggiungi il calendario al telefono e manda il link a chi serve.
 
 ## Notifiche dell'app (niente da configurare)
 
-Nella scheda **Telefono e condivisione › Notifiche dell'app** tocca **Attiva le notifiche su questo telefono** e
+Nella scheda **Notifiche e condivisione › Notifiche dell'app** tocca **Attiva le notifiche su questo telefono** e
 rispondi **Consenti**. Funziona anche con il link di sola lettura, quindi chiunque abbia la bacheca può attivarle
 sul proprio telefono.
 - **Android**: con Chrome (o Edge, Samsung Internet, Firefox) direttamente dal browser.
@@ -165,7 +165,7 @@ Per mandare email serve un servizio di invio. Consiglio **[Brevo](https://www.br
 In alternativa a Brevo puoi usare [Resend](https://resend.com) con `RESEND_API_KEY`: in quel caso serve un
 dominio verificato per scrivere a indirizzi diversi dal tuo.
 
-Nell'app, in **Telefono e condivisione › Avvisi via email**:
+Nell'app, in **Notifiche e condivisione › Mail**:
 - aggiungi gli indirizzi: ognuno riceve un'email di conferma e solo dopo il clic riceve i promemoria;
 - scegli per ognuno quali gruppi riceve;
 - in *Oggetto e testo dell'email* personalizzi i messaggi con parole che si riempiono da sole: `{testo}`,
@@ -182,7 +182,7 @@ come mittente, le prime email possono finire nello spam: segnale come "non spam"
 2. Su GitHub aggiungi il segreto `TELEGRAM_BOT_TOKEN` con quel token (come al punto 4 sopra).
 3. Rilancia il workflow (*Actions › Test e pubblicazione › Run workflow*). Il passo **Bot Telegram** carica il token
    su Cloudflare, registra il webhook e i comandi del bot; nel riepilogo compare il nome del bot.
-4. Nell'app, scheda **Telefono e condivisione › Avvisi su Telegram**: **Collega la mia chat Telegram** apre il bot,
+4. Nell'app, scheda **Notifiche e condivisione › Telegram**: **Collega la mia chat Telegram** apre il bot,
    tocca **Avvia** e torna nell'app. Per un gruppo: **Collega un gruppo Telegram** e scegli il gruppo.
 
 Come funziona: ogni 5 minuti un *Cron Trigger* del Worker calcola gli avvisi scattati dall'ultimo giro (nell'ora

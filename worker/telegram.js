@@ -98,7 +98,7 @@ export async function inviaAvvisi({ archivio, telegram, adesso = new Date() }) {
 /* ---------- webhook: comandi e tasti ---------- */
 
 const AIUTO = 'Ciao! Sono il bot di <b>Nomesmentego</b>: ti mando qui i promemoria di una bacheca.\n\n' +
-  'Per collegarmi apri la bacheca nel browser, vai su <i>Telefono e condivisione › Avvisi su Telegram</i> e tocca <b>Collega Telegram</b>.\n\n' +
+  'Per collegarmi apri la bacheca nel browser, vai su <i>Notifiche e condivisione › Telegram</i> e tocca <b>Collega Telegram</b>.\n\n' +
   '/oggi – cosa c\'è da ricordare oggi\n/stop – non ricevere più messaggi qui';
 
 function nomeChat(chat, from) {

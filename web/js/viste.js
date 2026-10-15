@@ -1,6 +1,6 @@
 // Le schermate dell'app (tranne l'editor di un promemoria, in editor.js).
 import { S, modifica, render, puoModificare, oggi } from './stato.js';
-import { api, recenti, dimentica } from './api.js';
+import { api, recenti, dimentica, ricorda } from './api.js';
 import { esc, attr, chip, toast, copia, condividi, scarica, caricaScript, testoSu, COLORI } from './ui.js';
 import { icona, ICONE as DISEGNI, SCENE } from './disegni.js';
 import { normalizza, nuovoId } from '../core/modello.js';
@@ -51,15 +51,15 @@ export function vistaHome() {
     '<p>I giorni della settimana di mercato, pagare il bollo, portare fuori la spazzatura, le medicine…: li imposti una volta e arrivano da soli sul calendario del telefono.</p>' +
     '<p class="muted small">Niente account e niente password: ogni bacheca ha il suo link segreto. Chi ha il link la vede e la modifica dal browser.</p></section>';
   h += '<section class="card"><h2>Crea una bacheca</h2><div class="stack">' +
-    '<label class="field">Come la chiamiamo?<input type="text" id="nomeNuova" class="grande" placeholder="es. Casa di mamma" maxlength="60"></label>' +
+    '<label class="field">Come la chiamiamo?<input type="text" id="nomeNuova" class="grande" placeholder="es. I miei promemoria settimanali" maxlength="60"></label>' +
     (S.ui.serveCodice ? '<label class="field">Codice di invito<span class="aiuto">Te lo dà chi ha installato l\'app.</span><input type="text" id="codiceNuova" autocomplete="off"></label>' : '') +
     '<button class="btn primary big" data-act="crea-bacheca">Crea la bacheca</button></div></section>';
   if (r.length) {
-    h += '<section class="card"><h2>Le tue bacheche</h2><p class="muted small">Aperte di recente su questo telefono.</p><div class="stack">';
+    h += '<section class="card"><h2>Bacheche aperte su questo telefono</h2><p class="muted small">Sono solo scorciatoie salvate in questo browser: gli altri non le vedono, e toglierle dall\'elenco non cancella la bacheca.</p><div class="stack">';
     for (const x of r) {
       h += '<div class="row"><a class="btn wide" style="flex:1;justify-content:flex-start" href="/' + (x.permesso === 'lettura' ? 'v' : 'b') + '/' + esc(x.token) + '">' +
         icona(x.permesso === 'lettura' ? 'occhio' : 'calendario', 'mini') + '<span>' + esc(x.nome) + (x.permesso === 'lettura' ? ' <span class="muted small">(sola lettura)</span>' : '') + '</span></a>' +
-        '<button class="btn ghost piccolo" data-act="dimentica" data-token="' + esc(x.token) + '" aria-label="Togli ' + esc(x.nome) + ' da questo elenco">Togli</button></div>';
+        '<button class="btn ghost piccolo" data-act="dimentica" data-token="' + esc(x.token) + '" aria-label="Togli ' + esc(x.nome) + ' dall\'elenco (la bacheca non viene cancellata)">Togli dall\'elenco</button></div>';
     }
     h += '</div></section>';
   }
@@ -103,11 +103,19 @@ export function vistaOggi() {
 
   h += vistaScadenze(t);
 
-  const prossimi = agenda(d, piuGiorni(t, 1), piuGiorni(t, 14));
-  h += '<section class="card"><h2>Prossimi 14 giorni</h2>';
-  if (!prossimi.length) h += '<p class="muted">Niente in programma.</p>';
+  // i prossimi 10 promemoria da domani in poi (anche lontani, come le scadenze), raggruppati per giorno
+  const prossimi = d.promemoria.flatMap((p) => prossime(p, piuGiorni(t, 1), 10, 800).map((o) => ({ p, o })))
+    .sort((a, b) => a.o.data.localeCompare(b.o.data)).slice(0, 10);
+  const perGiorno = [];
+  for (const x of prossimi) {
+    const g = perGiorno.at(-1);
+    if (g && g.data === x.o.data) g.voci.push(x); else perGiorno.push({ data: x.o.data, voci: [x] });
+  }
+  const traQuanto = (data) => { const n = differenza(t, data); return n === 1 ? 'domani' : n <= 60 ? 'tra ' + n + ' giorni' : 'nel ' + data.slice(0, 4); };
+  h += '<section class="card"><h2>I prossimi promemoria</h2>';
+  if (!perGiorno.length) h += '<p class="muted">Niente in programma.</p>';
   else {
-    h += '<div class="list">' + prossimi.map((g) => '<div class="item"><div class="d">' + esc(fmtGiorno(g.data)) + '<span>' + esc(differenza(t, g.data) === 1 ? 'domani' : 'tra ' + differenza(t, g.data) + ' giorni') + '</span></div><div>' +
+    h += '<div class="list">' + perGiorno.map((g) => '<div class="item"><div class="d">' + esc(fmtGiorno(g.data)) + '<span>' + esc(traQuanto(g.data)) + '</span></div><div>' +
       g.voci.map(({ p, o }) => occorrenzaHTML(p, o)).join('') + '</div></div>').join('') + '</div>';
   }
   h += '</section>';
@@ -238,7 +246,7 @@ export function vistaCalendario() {
 export function vistaCondividi() {
   const d = S.dati;
   const mod = S.permesso === 'modifica';
-  let h = '<section class="card"><h2>' + icona('calendario', 'titolo') + 'Gli avvisi sul telefono</h2>' +
+  let h = '<section class="card"><h2>' + icona('calendario', 'titolo') + 'Calendario</h2>' +
     '<p>Aggiungi la bacheca al calendario del telefono <b>una volta sola</b>: da lì in poi gli avvisi arrivano come quelli degli appuntamenti, e le modifiche fatte qui si aggiornano da sole.</p>' +
     '<div class="stack">' +
     '<a class="btn primary big" href="' + esc(linkWebcal()) + '">Apple Calendar</a>' +
@@ -264,7 +272,7 @@ export function vistaCondividi() {
     '<li><b>iPhone</b> (Safari): tocca Condividi › <b>Aggiungi alla schermata Home</b>.</li>' +
     '<li><b>Android</b> (Chrome): menu con i tre puntini › <b>Aggiungi a schermata Home</b> (o "Installa app").</li></ul></section>';
 
-  h += '<section class="card"><h2>' + icona('uccello', 'titolo') + 'Condividi con la famiglia</h2>';
+  h += '<section class="card"><h2>' + icona('uccello', 'titolo') + 'Condividi la bacheca</h2>';
   if (mod) {
     h += '<h3>Link per modificare</h3><p class="small muted">Chi lo ha può vedere e <b>cambiare</b> tutto: mandalo solo a chi ti fidi.</p>' +
       '<div class="row"><input class="copia" type="text" readonly value="' + esc(linkModifica()) + '" aria-label="Link per modificare" style="flex:1 1 220px"><button class="btn" data-act="condividi" data-url="' + esc(linkModifica()) + '">Manda</button></div>' +
@@ -277,7 +285,7 @@ export function vistaCondividi() {
   h += '</section>';
   if (!mod) return h;
 
-  h += '<section class="card"><h2>' + icona('stella', 'titolo') + 'Impostazioni</h2><label class="field">Nome della bacheca<input type="text" data-bind="nome-bacheca" value="' + esc(d.nome) + '" maxlength="60"></label>' +
+  h += '<section class="card"><h2>' + icona('stella', 'titolo') + 'Impostazioni</h2><label class="field">Nome della bacheca<span class="aiuto">Puoi cambiarlo quando vuoi (anche con la matita accanto al nome, in alto).</span><input type="text" data-bind="nome-bacheca" value="' + esc(d.nome) + '" maxlength="60"></label>' +
     '<h3 style="margin-top:16px">Gruppi</h3><p class="small muted">Per raccogliere i promemoria: un\'auto, la casa, una persona…</p>';
   d.gruppi.forEach((g, i) => {
     h += '<div class="riga-ed"><input type="color" data-bind="gruppo-colore" data-i="' + i + '" value="' + g.colore + '" aria-label="Colore di ' + esc(g.nome) + '">' +
@@ -392,7 +400,7 @@ function vistaEmail() {
   const e = S.ui.email;
   if (!e) { caricaEmail(); return ''; }
   if (e.caricamento && !e.modello) return '';
-  let h = '<section class="card"><h2>' + icona('documento', 'titolo') + 'Avvisi via email</h2>';
+  let h = '<section class="card"><h2>' + icona('documento', 'titolo') + 'Mail</h2>';
   if (!e.attiva) {
     return h + '<p class="notice small">L\'invio di email non è ancora configurato su questo server: chi gestisce l\'app deve aggiungere i segreti <b>BREVO_API_KEY</b> ed <b>EMAIL_MITTENTE</b> (vedi il README).</p></section>';
   }
@@ -445,9 +453,9 @@ function vistaTelegram() {
   if (!tg) { caricaTelegram(); return ''; }
   if (tg.caricamento && !tg.attivo) return '';
   if (!tg.attivo) {
-    return mod ? '<section class="card"><h2>' + icona('telefono', 'titolo') + 'Avvisi su Telegram</h2><p class="notice small">Il bot Telegram non è ancora configurato su questo server: chi gestisce l\'app deve aggiungere il segreto <b>TELEGRAM_BOT_TOKEN</b> (vedi il README).</p></section>' : '';
+    return mod ? '<section class="card"><h2>' + icona('uccello', 'titolo') + 'Telegram</h2><p class="notice small">Il bot Telegram non è ancora configurato su questo server: chi gestisce l\'app deve aggiungere il segreto <b>TELEGRAM_BOT_TOKEN</b> (vedi il README).</p></section>' : '';
   }
-  let h = '<section class="card"><h2>' + icona('telefono', 'titolo') + 'Avvisi su Telegram</h2>' +
+  let h = '<section class="card"><h2>' + icona('uccello', 'titolo') + 'Telegram</h2>' +
     '<p>Ricevi i promemoria come messaggi su Telegram, all\'ora di ogni avviso. Va bene anche un gruppo di famiglia. Per le scadenze c\'è il tasto <b>Fatto</b> direttamente nel messaggio.</p>';
   if (tg.errore) h += '<p class="notice attenzione small">' + esc(tg.errore) + '</p>';
   if (tg.link) {
@@ -474,6 +482,13 @@ function vistaTelegram() {
   return h + '</section>';
 }
 
+/** Cambia il nome della bacheca e aggiorna anche l'elenco delle bacheche su questo telefono. */
+function rinomina(nome) {
+  modifica((d) => { d.nome = nome.slice(0, 60); }, { subito: true });
+  ricorda({ token: S.token, nome: S.dati.nome, permesso: S.permesso });
+  document.title = S.dati.nome + ' · Promemoria';
+}
+
 /* ---------- azioni ---------- */
 export const AZIONI = {
   async 'crea-bacheca'(el) {
@@ -487,6 +502,12 @@ export const AZIONI = {
     } catch (e) { toast(e.message); el.disabled = false; }
   },
   'dimentica'(el) { dimentica(el.dataset.token); render(); },
+  'rinomina'() {
+    const nome = window.prompt('Come vuoi chiamare la bacheca?', S.dati.nome);
+    if (nome === null || !nome.trim() || nome.trim() === S.dati.nome) return;
+    rinomina(nome.trim());
+    toast('Bacheca rinominata: ' + nome.trim());
+  },
   'chiudi-benvenuto'() { try { sessionStorage.removeItem('nms.nuova'); } catch { /* */ } render(); },
   'copia'(el) { copia(el.dataset.testo); },
   'condividi'(el) { condividi(S.dati?.nome || 'Promemoria', 'I promemoria di "' + (S.dati?.nome || '') + '":', el.dataset.url); },
@@ -689,7 +710,7 @@ export const LEGAMI = {
       return true;
     }
   },
-  'nome-bacheca'(el, evento) { if (evento === 'change') modifica((d) => { d.nome = el.value; }); },
+  'nome-bacheca'(el, evento) { if (evento === 'change' && el.value.trim()) rinomina(el.value.trim()); },
   'gruppo-nome'(el, evento) { if (evento === 'change') modifica((d) => { d.gruppi[+el.dataset.i].nome = el.value; }); },
   'gruppo-colore'(el, evento) { if (evento === 'change') modifica((d) => { d.gruppi[+el.dataset.i].colore = el.value; }); },
 };

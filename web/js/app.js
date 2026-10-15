@@ -30,6 +30,7 @@ function ridisegna() {
   const titolo = $('#titolo'), titoloLink = $('#titoloLink');
   if (!m) {
     titolo.textContent = 'Nomesmentego'; titoloLink.href = '/';
+    $('#rinomina').classList.add('hidden');
     schede.classList.add('hidden');
     vista.innerHTML = vistaHome();
     return;
@@ -41,6 +42,7 @@ function ridisegna() {
   }
   if (S.vista === 'modifica' && !S.bozza) leggiHash();
   titolo.textContent = S.dati.nome; titoloLink.href = '#oggi';
+  $('#rinomina').classList.toggle('hidden', !puoModificare());
   document.title = S.dati.nome + ' · Promemoria';
   schede.classList.remove('hidden');
   const attiva = SCHEDA_DI[S.vista] || S.vista;
