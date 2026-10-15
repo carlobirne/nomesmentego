@@ -1,10 +1,10 @@
 // Avvisi su Telegram: client delle API, comandi del bot, tasto "Fatto" e giro di invio periodico.
 import { normalizza } from '../web/core/modello.js';
 import { tuttiGliAvvisi, segnaFatto, prossimaScadenza } from '../web/core/motore.js';
-import { oggi, oraAttuale, piuGiorni, fmtAnno, fmtLungo } from '../web/core/date.js';
+import { oggi, fmtAnno, fmtLungo } from '../web/core/date.js';
+import { adessoLocale, filtroDi, passaFiltro, avvisiDaMandare, descriviFiltro } from './giro.js';
 
 const API = 'https://api.telegram.org/bot';
-const MAX_INDIETRO_GIORNI = 1; // dopo un'interruzione si recuperano al massimo gli avvisi dell'ultimo giorno
 
 export const htmlTg = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -46,9 +46,6 @@ export function creaTelegram(token, fetchFn = (...a) => fetch(...a)) {
 
 /* ---------- messaggi ---------- */
 
-const adessoLocale = (fuso, d) => oggi(fuso, d) + 'T' + oraAttuale(fuso, d);
-const filtroDi = (iscr) => { try { return iscr.filtro ? JSON.parse(iscr.filtro) : null; } catch { return null; } };
-const passaFiltro = (p, filtro) => !filtro || filtro.includes(p.gruppo || '');
 
 function messaggioAvviso(bacheca, av, iscr) {
   const p = bacheca.promemoria.find((x) => x.id === av.promemoria);
@@ -77,15 +74,8 @@ export async function inviaAvvisi({ archivio, telegram, adesso = new Date() }) {
   for (const iscr of iscrizioni) {
     let bacheca;
     try { bacheca = normalizza(JSON.parse(iscr.dati)); } catch { continue; }
-    const fuso = bacheca.fusoOrario;
-    const ora = adessoLocale(fuso, adesso);
-    const limite = piuGiorni(ora.slice(0, 10), -MAX_INDIETRO_GIORNI) + ora.slice(10);
-    const da = iscr.ultimo > limite ? iscr.ultimo : limite;
-    if (da >= ora) continue;
-    const filtro = filtroDi(iscr);
-    const avvisi = tuttiGliAvvisi(bacheca, da.slice(0, 10), ora.slice(0, 10))
-      .filter((a) => { const k = a.data + 'T' + a.ora; return k > da && k <= ora; })
-      .filter((a) => passaFiltro(bacheca.promemoria.find((p) => p.id === a.promemoria), filtro));
+    const { avvisi, ora } = avvisiDaMandare(iscr, bacheca, adesso);
+    if (!avvisi.length) continue; // niente da mandare: non serve scrivere nel database
     let ok = true;
     for (const av of avvisi) {
       const { testo, tastiera } = messaggioAvviso(bacheca, av, iscr);
@@ -205,6 +195,6 @@ export async function gestisciAggiornamento(upd, dip) {
 /** Riassunto per la pagina della bacheca. */
 export const descrizioneIscrizione = (i, bacheca) => ({
   chat: i.chat_id, nome: i.nome, modifica: !!i.modifica, creata: i.creata,
-  filtro: (() => { const f = filtroDi(i); return f ? f.filter((g) => g === '' || bacheca.gruppi.some((x) => x.id === g)) : null; })(),
+  filtro: descriviFiltro(i, bacheca),
 });
 

@@ -1,34 +1,16 @@
 // Cloudflare Worker: API delle bacheche, feed calendario e manifest dell'app.
 // Tutto il resto (la web app in web/) lo serve direttamente Cloudflare come file statici.
 import { ArchivioD1 } from './archivio.js';
+import { json, errore, leggiCorpo, nuovoToken, impronta } from './http.js';
+export { nuovoToken, impronta };
 import { creaTelegram, segretoWebhook, gestisciAggiornamento, inviaAvvisi, descrizioneIscrizione } from './telegram.js';
+import { apiPush, inviaNotifiche } from './push.js';
+import { creaPosta, apiEmail, paginaEmail, inviaEmail } from './email.js';
 import { normalizza, bachecaVuota } from '../web/core/modello.js';
 import { generaICS } from '../web/core/ics.js';
 import { oggi, piuGiorni, piuMesi } from '../web/core/date.js';
 
-const MAX_BYTES = 300_000;
 const TOKEN = /^[A-Za-z0-9_-]{20,64}$/;
-
-export function nuovoToken(byte = 18) {
-  const b = crypto.getRandomValues(new Uint8Array(byte));
-  return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-export async function impronta(token) {
-  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
-  return [...new Uint8Array(h)].map((x) => x.toString(16).padStart(2, '0')).join('');
-}
-
-const json = (corpo, stato = 200, extra = {}) => new Response(JSON.stringify(corpo), {
-  status: stato,
-  headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer', ...extra },
-});
-const errore = (stato, messaggio) => json({ errore: messaggio }, stato);
-
-async function leggiCorpo(request) {
-  const testo = await request.text();
-  if (new TextEncoder().encode(testo).length > MAX_BYTES) throw Object.assign(new Error('Bacheca troppo grande.'), { stato: 413 });
-  try { return JSON.parse(testo || '{}'); } catch { throw Object.assign(new Error('JSON non valido.'), { stato: 400 }); }
-}
 
 /** Valida e serializza una bacheca; la normalizzazione è la stessa dell'app. */
 function prepara(dati) {
@@ -44,9 +26,10 @@ const risposta = (riga, permesso, extra = {}) => ({
 });
 
 /**
- * Gestisce una richiesta. `archivio` e `telegram` sono iniettabili per i test.
+ * Gestisce una richiesta. `archivio`, `telegram`, `posta` e `fetchPush` sono iniettabili per i test.
  */
-export async function gestisci(request, env, archivio = new ArchivioD1(env.DB), telegram = creaTelegram(env.TELEGRAM_BOT_TOKEN)) {
+export async function gestisci(request, env, archivio = new ArchivioD1(env.DB), telegram = creaTelegram(env.TELEGRAM_BOT_TOKEN),
+  { posta = creaPosta(env), fetchPush = (...a) => fetch(...a) } = {}) {
   const url = new URL(request.url);
   const parti = url.pathname.split('/').filter(Boolean);
   const metodo = request.method;
@@ -55,7 +38,12 @@ export async function gestisci(request, env, archivio = new ArchivioD1(env.DB), 
   try {
     // ---------- configurazione pubblica ----------
     if (url.pathname === '/api/config' && metodo === 'GET') {
-      return json({ serveCodice: !!env.CODICE_INVITO, telegram: !!telegram });
+      return json({ serveCodice: !!env.CODICE_INVITO, telegram: !!telegram, email: !!posta, notifiche: true });
+    }
+
+    // ---------- pagine per confermare o togliere un indirizzo email ----------
+    if (parti[0] === 'email' && (parti[1] === 'conferma' || parti[1] === 'stop') && (metodo === 'GET' || metodo === 'POST')) {
+      return paginaEmail({ metodo, tipo: parti[1], token: parti[2], archivio });
     }
 
     // ---------- webhook del bot Telegram ----------
@@ -89,6 +77,11 @@ export async function gestisci(request, env, archivio = new ArchivioD1(env.DB), 
       const permesso = riga ? 'modifica' : 'lettura';
       if (!riga) riga = await archivio.perLettura(token);
       if (!riga) return errore(404, 'Bacheca non trovata. Controlla il link: forse è stato cambiato.');
+      if (permesso === 'lettura') riga = { ...riga, token_lettura: token };
+
+      // ---------- notifiche dell'app ed email ----------
+      if (azione === 'push') return apiPush({ request, url, metodo, sotto: parti[4] ?? '', riga, permesso, archivio, fetchFn: fetchPush });
+      if (azione === 'email') return apiEmail({ request, url, metodo, sotto: parti[4] ?? '', azione2: parti[5], riga, permesso, archivio, posta });
 
       if (azione === '' && metodo === 'GET') {
         return json(risposta(riga, permesso, permesso === 'modifica' ? { lettura: riga.token_lettura } : {}));
@@ -213,9 +206,14 @@ export async function gestisci(request, env, archivio = new ArchivioD1(env.DB), 
 
 export default {
   fetch: (request, env) => gestisci(request, env),
-  // Cron Trigger (ogni 5 minuti, vedi wrangler.jsonc): manda gli avvisi su Telegram
+  // Cron Trigger (ogni 5 minuti, vedi wrangler.jsonc): manda gli avvisi su Telegram, notifiche dell'app ed email
   scheduled: (controller, env, ctx) => {
-    ctx.waitUntil(inviaAvvisi({ archivio: new ArchivioD1(env.DB), telegram: creaTelegram(env.TELEGRAM_BOT_TOKEN), adesso: new Date(controller.scheduledTime) })
-      .then((r) => { if (r.inviati) console.log('telegram: inviati', r.inviati); }));
+    const archivio = new ArchivioD1(env.DB), adesso = new Date(controller.scheduledTime);
+    const giro = (nome, p) => p.then((r) => { if (r.inviati) console.log(nome + ': inviati', r.inviati); }).catch((e) => console.error(nome, e));
+    ctx.waitUntil(Promise.all([
+      giro('telegram', inviaAvvisi({ archivio, telegram: creaTelegram(env.TELEGRAM_BOT_TOKEN), adesso })),
+      giro('notifiche', inviaNotifiche({ archivio, adesso })),
+      giro('email', inviaEmail({ archivio, posta: creaPosta(env), adesso })),
+    ]));
   },
 };

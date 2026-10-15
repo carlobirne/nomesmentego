@@ -125,6 +125,47 @@ export class ArchivioD1 {
     const r = await this.db.prepare('DELETE FROM telegram_iscrizioni WHERE chat_id = ?').bind(chatId).run();
     return r.meta.changes;
   }
+
+  /* ---------- impostazioni e notifiche (app ed email) ---------- */
+
+  async impostazione(chiave) {
+    return (await this.db.prepare('SELECT valore FROM impostazioni WHERE chiave = ?').bind(chiave).first())?.valore ?? null;
+  }
+  async salvaImpostazione(chiave, valore, { soloSeManca = false } = {}) {
+    await this.db.prepare(soloSeManca ? 'INSERT OR IGNORE INTO impostazioni (chiave, valore) VALUES (?, ?)'
+      : 'INSERT INTO impostazioni (chiave, valore) VALUES (?, ?) ON CONFLICT (chiave) DO UPDATE SET valore = excluded.valore').bind(chiave, valore).run();
+  }
+
+  /** Crea (o aggiorna, se la destinazione c'è già) e restituisce la riga. */
+  async salvaNotifica(n) {
+    await this.db.prepare(`INSERT INTO notifiche (id, bacheca_id, canale, destinazione, chiavi, nome, stato, token, origine, filtro, ultimo, creata)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+      ON CONFLICT (bacheca_id, canale, destinazione) DO UPDATE SET chiavi = excluded.chiavi, nome = excluded.nome, origine = excluded.origine`)
+      .bind(n.id, n.bachecaId, n.canale, n.destinazione, n.chiavi ?? null, n.nome, n.stato, n.token, n.origine, n.ultimo, n.creata).run();
+    return this.db.prepare('SELECT * FROM notifiche WHERE bacheca_id = ? AND canale = ? AND destinazione = ?').bind(n.bachecaId, n.canale, n.destinazione).first();
+  }
+  async notifiche(bachecaId, canale) {
+    return (await this.db.prepare('SELECT * FROM notifiche WHERE bacheca_id = ? AND canale = ? ORDER BY creata').bind(bachecaId, canale).all()).results;
+  }
+  notifica(id) { return this.db.prepare('SELECT * FROM notifiche WHERE id = ?').bind(id).first(); }
+  notificaPerToken(token) {
+    return this.db.prepare('SELECT n.*, b.dati FROM notifiche n JOIN bacheche b ON b.id = n.bacheca_id WHERE n.token = ?').bind(token).first();
+  }
+  /** Destinatari attivi di un canale con i dati della bacheca, per il giro di invio. */
+  async notificheAttive(canale) {
+    return (await this.db.prepare(`SELECT n.*, b.dati, b.token_lettura FROM notifiche n JOIN bacheche b ON b.id = n.bacheca_id
+      WHERE n.canale = ? AND n.stato = 'attivo'`).bind(canale).all()).results;
+  }
+  async aggiornaNotifica(id, campi) {
+    const nomi = Object.keys(campi).filter((k) => ['filtro', 'stato', 'ultimo', 'nome'].includes(k));
+    if (!nomi.length) return false;
+    const r = await this.db.prepare('UPDATE notifiche SET ' + nomi.map((k) => k + ' = ?').join(', ') + ' WHERE id = ?')
+      .bind(...nomi.map((k) => campi[k]), id).run();
+    return r.meta.changes > 0;
+  }
+  async rimuoviNotifica(id) {
+    return (await this.db.prepare('DELETE FROM notifiche WHERE id = ?').bind(id).run()).meta.changes > 0;
+  }
 }
 
 export class ArchivioMemoria {
@@ -186,6 +227,44 @@ export class ArchivioMemoria {
     const n = this.telegram.iscrizioni.length;
     this.telegram.iscrizioni = this.telegram.iscrizioni.filter((x) => !(x.bacheca_id === bachecaId && x.chat_id === chatId));
     return this.telegram.iscrizioni.length < n;
+  }
+  /* impostazioni e notifiche */
+  impostazioni = new Map();
+  notificheRighe = [];
+  async impostazione(chiave) { return this.impostazioni.get(chiave) ?? null; }
+  async salvaImpostazione(chiave, valore, { soloSeManca = false } = {}) {
+    if (!soloSeManca || !this.impostazioni.has(chiave)) this.impostazioni.set(chiave, valore);
+  }
+  async salvaNotifica(n) {
+    let r = this.notificheRighe.find((x) => x.bacheca_id === n.bachecaId && x.canale === n.canale && x.destinazione === n.destinazione);
+    if (r) Object.assign(r, { chiavi: n.chiavi ?? null, nome: n.nome, origine: n.origine });
+    else {
+      r = { id: n.id, bacheca_id: n.bachecaId, canale: n.canale, destinazione: n.destinazione, chiavi: n.chiavi ?? null, nome: n.nome,
+        stato: n.stato, token: n.token, origine: n.origine, filtro: null, ultimo: n.ultimo, creata: n.creata };
+      this.notificheRighe.push(r);
+    }
+    return { ...r };
+  }
+  async notifiche(bachecaId, canale) { return this.notificheRighe.filter((x) => x.bacheca_id === bachecaId && x.canale === canale).map((x) => ({ ...x })); }
+  async notifica(id) { const r = this.notificheRighe.find((x) => x.id === id); return r ? { ...r } : null; }
+  async notificaPerToken(token) {
+    const r = this.notificheRighe.find((x) => x.token === token);
+    return r ? { ...r, dati: this.righe.get(r.bacheca_id).dati } : null;
+  }
+  async notificheAttive(canale) {
+    return this.notificheRighe.filter((x) => x.canale === canale && x.stato === 'attivo')
+      .map((x) => ({ ...x, dati: this.righe.get(x.bacheca_id).dati, token_lettura: this.righe.get(x.bacheca_id).token_lettura }));
+  }
+  async aggiornaNotifica(id, campi) {
+    const r = this.notificheRighe.find((x) => x.id === id);
+    if (!r) return false;
+    for (const k of ['filtro', 'stato', 'ultimo', 'nome']) if (k in campi) r[k] = campi[k];
+    return true;
+  }
+  async rimuoviNotifica(id) {
+    const n = this.notificheRighe.length;
+    this.notificheRighe = this.notificheRighe.filter((x) => x.id !== id);
+    return this.notificheRighe.length < n;
   }
   async rimuoviChatTelegram(chatId) {
     const n = this.telegram.iscrizioni.length;

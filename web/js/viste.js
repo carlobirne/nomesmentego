@@ -256,7 +256,9 @@ export function vistaCondividi() {
     '<h3>Solo dal telefono Android</h3><p class="small">Installa l\'app <b>ICSx⁵</b> (gratis su F-Droid, pochi euro sul Play Store), premi <b>+</b> e incolla l\'indirizzo copiato: il calendario compare nell\'app Calendario del telefono, anche in Google Calendar, e si aggiorna più spesso.</p>' +
     '<p class="small muted">Non vuoi abbonarti? <button class="btn ghost piccolo" data-act="ics-scarica">Scarica un file .ics</button> con i prossimi 6 mesi (non si aggiorna da solo).</p></details></section>';
 
+  h += vistaPush();
   h += vistaTelegram();
+  h += vistaEmail();
 
   h += '<section class="card"><h2>' + icona('casa', 'titolo') + 'Sulla schermata Home</h2><p>Così apri la bacheca come un\'app.</p><ul class="passi-guida">' +
     '<li><b>iPhone</b> (Safari): tocca Condividi › <b>Aggiungi alla schermata Home</b>.</li>' +
@@ -304,6 +306,124 @@ export function vistaCondividi() {
 }
 
 
+/* ---------- scelta dei gruppi da ricevere (Telegram, notifiche, email) ---------- */
+function sceltaFiltro(canale, id, f) {
+  const gruppi = S.dati.gruppi;
+  if (!gruppi.length) return '';
+  const scelta = (g, nome) => '<button class="chip" data-act="filtro" data-canale="' + canale + '" data-id="' + esc(id) + '" data-g="' + esc(g) + '" aria-pressed="' + (!!f && f.includes(g)) + '">' + esc(nome) + '</button>';
+  return '<div style="flex-basis:100%"><div class="small" style="font-weight:700;margin-bottom:6px">Riceve</div><div class="chips">' +
+    '<button class="chip" data-act="filtro" data-canale="' + canale + '" data-id="' + esc(id) + '" data-g="*" aria-pressed="' + !f + '">Tutto</button>' +
+    gruppi.map((g) => scelta(g.id, g.nome)).join('') + scelta('', 'Senza gruppo') + '</div></div>';
+}
+const elencoDi = (canale) => ({ telegram: S.ui.tg?.iscrizioni, push: S.ui.push?.telefoni, email: S.ui.email?.destinatari }[canale] || []);
+const chiaveDi = (canale, x) => (canale === 'telegram' ? x.chat : x.id);
+
+/* ---------- notifiche dell'app (Web Push) ---------- */
+const pushSupportato = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const suIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const inStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+function nomeDispositivo() {
+  const ua = navigator.userAgent;
+  const so = /Android/.test(ua) ? 'Android' : suIOS() ? (/iPad/.test(ua) || navigator.maxTouchPoints > 1 && !/iPhone/.test(ua) ? 'iPad' : 'iPhone') : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'Computer';
+  const br = /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '';
+  return so + (br ? ' · ' + br : '');
+}
+const chiaveB64 = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
+async function abbonamentoAttuale() {
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+
+async function caricaPush() {
+  const p = S.ui.push = { ...(S.ui.push || {}), caricamento: true };
+  try {
+    if (pushSupportato() && Notification.permission === 'granted') {
+      const sub = await abbonamentoAttuale();
+      p.attivo = sub ? (await api.pushMio(S.token, sub.endpoint)).attivo : false;
+    } else p.attivo = false;
+    if (S.permesso === 'modifica') p.telefoni = (await api.pushElenco(S.token)).telefoni;
+  } catch (e) { p.errore = e.message; }
+  p.caricamento = false;
+  render();
+}
+
+function vistaPush() {
+  const p = S.ui.push;
+  if (!p) { caricaPush(); return ''; }
+  let h = '<section class="card"><h2>' + icona('campanella', 'titolo') + 'Notifiche dell\'app</h2>' +
+    '<p>Senza installare niente: gli avvisi arrivano come notifiche su questo telefono, all\'ora di ogni promemoria.</p>';
+  if (!pushSupportato() || (suIOS() && !inStandalone())) {
+    h += suIOS()
+      ? '<p class="notice small">Su <b>iPhone e iPad</b> le notifiche funzionano solo dall\'icona sulla schermata Home (iOS 16.4 o successivo): in Safari tocca <b>Condividi › Aggiungi alla schermata Home</b>, apri la bacheca da quell\'icona e torna qui.</p>'
+      : '<p class="notice small">Questo browser non supporta le notifiche. Su Android usa <b>Chrome</b>; in alternativa usa Telegram o l\'email qui sotto.</p>';
+  } else if (Notification.permission === 'denied') {
+    h += '<p class="notice attenzione small">Le notifiche per questo sito sono bloccate. Riattivale dalle impostazioni del browser (icona accanto all\'indirizzo › Autorizzazioni › Notifiche), poi torna qui.</p>';
+  } else if (p.attivo) {
+    h += '<p class="riassunto">Attive su questo telefono.</p><div class="row" style="margin-top:10px"><button class="btn" data-act="push-prova">Manda una notifica di prova</button>' +
+      '<button class="btn danger" data-act="push-disattiva">Disattiva su questo telefono</button></div>';
+  } else {
+    h += '<button class="btn primary big wide" data-act="push-attiva"' + (p.caricamento ? ' disabled' : '') + '>Attiva le notifiche su questo telefono</button>' +
+      '<p class="small muted" style="margin:8px 0 0">Il telefono ti chiederà il permesso: rispondi <b>Consenti</b>.</p>';
+  }
+  if (p.errore) h += '<p class="notice attenzione small" style="margin-top:10px">' + esc(p.errore) + '</p>';
+  if (S.permesso === 'modifica' && p.telefoni?.length) {
+    h += '<h3 style="margin-top:16px">Telefoni con le notifiche</h3>';
+    for (const t of p.telefoni) {
+      h += '<div class="riga-ed" style="align-items:center">' + icona('telefono', 'mini') + '<div style="flex:1 1 160px;min-width:0"><b>' + esc(t.nome) + '</b>' +
+        '<div class="small muted">dal ' + esc(new Date(t.creata).toLocaleDateString('it-IT')) + '</div></div>' +
+        (S.ui.conferma === 'push' + t.id ? '<button class="btn danger piccolo" data-act="push-togli-ok" data-id="' + esc(t.id) + '">Conferma</button>'
+          : '<button class="btn danger piccolo" data-act="push-togli" data-id="' + esc(t.id) + '">Togli</button>') +
+        sceltaFiltro('push', t.id, t.filtro) + '</div>';
+    }
+  }
+  return h + '</section>';
+}
+
+/* ---------- avvisi via email ---------- */
+async function caricaEmail() {
+  const e = S.ui.email = { ...(S.ui.email || {}), caricamento: true };
+  try { Object.assign(e, await api.email(S.token)); e.bozza ??= { ...e.modello }; } catch (x) { e.errore = x.message; }
+  e.caricamento = false;
+  render();
+}
+
+function vistaEmail() {
+  if (S.permesso !== 'modifica') return '';
+  const e = S.ui.email;
+  if (!e) { caricaEmail(); return ''; }
+  if (e.caricamento && !e.modello) return '';
+  let h = '<section class="card"><h2>' + icona('documento', 'titolo') + 'Avvisi via email</h2>';
+  if (!e.attiva) {
+    return h + '<p class="notice small">L\'invio di email non è ancora configurato su questo server: chi gestisce l\'app deve aggiungere i segreti <b>BREVO_API_KEY</b> ed <b>EMAIL_MITTENTE</b> (vedi il README).</p></section>';
+  }
+  h += '<p>Un\'email a ogni avviso, agli indirizzi qui sotto. Ogni indirizzo riceve prima un\'email per <b>confermare</b>: finché non conferma non riceve niente, e in ogni email c\'è il link per smettere.</p>';
+  if (e.errore) h += '<p class="notice attenzione small">' + esc(e.errore) + '</p>';
+  for (const d of e.destinatari || []) {
+    h += '<div class="riga-ed" style="align-items:center">' + icona('documento', 'mini') + '<div style="flex:1 1 160px;min-width:0"><b>' + esc(d.nome) + '</b>' +
+      (d.nome !== d.indirizzo ? '<div class="small muted">' + esc(d.indirizzo) + '</div>' : '') + '</div>' +
+      (d.stato === 'attivo' ? '<span class="badge verde">Attivo</span>' : '<span class="badge giallo">Da confermare</span><button class="btn piccolo" data-act="email-conferma" data-id="' + esc(d.id) + '">Rimanda la conferma</button>') +
+      (S.ui.conferma === 'email' + d.id ? '<button class="btn danger piccolo" data-act="email-togli-ok" data-id="' + esc(d.id) + '">Conferma</button>'
+        : '<button class="btn danger piccolo" data-act="email-togli" data-id="' + esc(d.id) + '">Togli</button>') +
+      sceltaFiltro('email', d.id, d.filtro) + '</div>';
+  }
+  h += '<div class="riga-ed"><label class="field">Indirizzo email<input type="email" id="emailNuova" autocomplete="email" inputmode="email" placeholder="nome@esempio.it"></label>' +
+    '<label class="field">Nome (facoltativo)<input type="text" id="emailNome" placeholder="es. Mamma"></label>' +
+    '<button class="btn primary" data-act="email-aggiungi">Aggiungi</button></div>';
+
+  const b = e.bozza;
+  h += '<details class="altro"' + (S.ui.emailModello ? ' open' : '') + '><summary data-act="email-modello-apri">Oggetto e testo dell\'email</summary>' +
+    '<div class="stack" style="margin-top:8px"><label class="field">Oggetto<input type="text" data-bind="email-oggetto" value="' + esc(b.oggetto) + '" maxlength="200"></label>' +
+    '<label class="field">Testo<textarea data-bind="email-corpo" maxlength="4000" style="min-height:160px">' + esc(b.corpo) + '</textarea></label>' +
+    '<div class="small"><b>Parole che si riempiono da sole</b> (toccale per aggiungerle al testo):<div class="chips" style="margin-top:6px">' +
+    (e.segnaposto || []).map((k) => '<button class="chip" data-act="email-segnaposto" data-v="' + k + '">{' + k + '}</button>').join('') + '</div>' +
+    '<p class="muted" style="margin:6px 0 0">{testo} il testo dell\'avviso · {promemoria} il nome · {voci} es. i tipi di rifiuto · {gruppo} · {data} il giorno · {quando} es. "domani" · {ripetizione} · {nota} · {bacheca}. In fondo aggiungo sempre il link alla bacheca e quello per non ricevere più.</p></div>' +
+    '<div class="row"><button class="btn primary" data-act="email-modello-salva">Salva</button><button class="btn" data-act="email-anteprima">Anteprima</button><button class="btn ghost" data-act="email-modello-predefinito">Testo predefinito</button></div>';
+  if (e.anteprima) h += '<div class="pannello"><div class="small muted">Oggetto</div><b>' + esc(e.anteprima.oggetto) + '</b><div class="small muted" style="margin-top:8px">Testo</div><div style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(e.anteprima.testo) + '</div></div>';
+  h += '</div></details>';
+  if ((e.destinatari || []).some((d) => d.stato === 'attivo')) h += '<div class="row" style="margin-top:12px"><button class="btn" data-act="email-prova">Manda un\'email di prova</button></div>';
+  return h + '</section>';
+}
+
 /* ---------- avvisi su Telegram ---------- */
 const VALIDITA_LINK = 50 * 60 * 1000; // il codice dura un'ora sul server
 
@@ -338,20 +458,12 @@ function vistaTelegram() {
   if (mod) {
     h += '<h3 style="margin-top:16px">Chat collegate</h3>';
     if (!tg.iscrizioni?.length) h += '<p class="muted small">Ancora nessuna.</p>';
-    const gruppi = S.dati.gruppi;
     for (const i of tg.iscrizioni || []) {
       h += '<div class="riga-ed" style="align-items:center">' + icona('uccello', 'mini') + '<div style="flex:1 1 160px;min-width:0"><b>' + esc(i.nome) + '</b>' +
         (i.modifica ? '' : '<div class="small muted">Collegata con il link di sola lettura: niente tasto "Fatto"</div>') + '</div>' +
         (S.ui.conferma === 'tg' + i.chat ? '<button class="btn danger piccolo" data-act="tg-togli-ok" data-chat="' + esc(i.chat) + '">Conferma</button>'
           : '<button class="btn danger piccolo" data-act="tg-togli" data-chat="' + esc(i.chat) + '">Togli</button>');
-      if (gruppi.length) {
-        const f = i.filtro;
-        const scelta = (id, nome) => '<button class="chip" data-act="tg-filtro" data-chat="' + esc(i.chat) + '" data-g="' + esc(id) + '" aria-pressed="' + (!!f && f.includes(id)) + '">' + esc(nome) + '</button>';
-        h += '<div style="flex-basis:100%"><div class="small" style="font-weight:700;margin-bottom:6px">Riceve</div><div class="chips">' +
-          '<button class="chip" data-act="tg-filtro" data-chat="' + esc(i.chat) + '" data-g="*" aria-pressed="' + !f + '">Tutto</button>' +
-          gruppi.map((g) => scelta(g.id, g.nome)).join('') + scelta('', 'Senza gruppo') + '</div></div>';
-      }
-      h += '</div>';
+      h += sceltaFiltro('telegram', i.chat, i.filtro) + '</div>';
     }
     h += '<div class="row" style="margin-top:12px"><button class="btn" data-act="tg-aggiorna">Aggiorna</button>' +
       (tg.iscrizioni?.length ? '<button class="btn" data-act="tg-prova">Manda un messaggio di prova</button>' : '') + '</div>';
@@ -457,14 +569,95 @@ export const AZIONI = {
     try { await api.telegramTogli(S.token, el.dataset.chat); toast('Chat scollegata.'); } catch (e) { toast(e.message); }
     caricaTelegram();
   },
-  async 'tg-filtro'(el) {
-    const i = S.ui.tg.iscrizioni.find((x) => x.chat === el.dataset.chat);
+  async 'filtro'(el) {
+    const canale = el.dataset.canale;
+    const x = elencoDi(canale).find((y) => chiaveDi(canale, y) === el.dataset.id);
+    if (!x) return;
     const g = el.dataset.g;
-    let f = g === '*' ? null : (i.filtro ? [...i.filtro] : []);
-    if (f) f = f.includes(g) ? f.filter((x) => x !== g) : [...f, g];
+    let f = g === '*' ? null : (x.filtro ? [...x.filtro] : []);
+    if (f) f = f.includes(g) ? f.filter((y) => y !== g) : [...f, g];
     if (f && !f.length) f = null;
-    i.filtro = f; render();
-    try { i.filtro = (await api.telegramFiltro(S.token, i.chat, f)).filtro; } catch (e) { toast(e.message); caricaTelegram(); }
+    x.filtro = f; render();
+    const salva = { telegram: api.telegramFiltro, push: api.pushFiltro, email: api.emailFiltro }[canale];
+    try { x.filtro = (await salva(S.token, el.dataset.id, f)).filtro; } catch (e) { toast(e.message); }
+  },
+
+  async 'push-attiva'(el) {
+    el.disabled = true;
+    try {
+      const permesso = await Notification.requestPermission(); // va chiesto subito, dentro il tocco
+      if (permesso !== 'granted') { toast('Senza il permesso le notifiche non possono arrivare.'); render(); return; }
+      const { chiave } = await api.pushChiave(S.token);
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveB64(chiave) });
+      await api.pushIscrivi(S.token, sub.toJSON(), nomeDispositivo());
+      S.ui.push.attivo = true; S.ui.push.errore = null;
+      toast('Notifiche attive su questo telefono.');
+    } catch (e) { S.ui.push.errore = 'Non sono riuscito ad attivare le notifiche: ' + e.message; }
+    caricaPush();
+  },
+  async 'push-disattiva'() {
+    try { const sub = await abbonamentoAttuale(); if (sub) await api.pushVia(S.token, sub.endpoint); toast('Notifiche disattivate su questo telefono.'); } catch (e) { toast(e.message); }
+    caricaPush();
+  },
+  async 'push-prova'() {
+    try { const sub = await abbonamentoAttuale(); const r = await api.pushProva(S.token, sub?.endpoint); toast(r.inviati ? 'Notifica mandata: dovrebbe arrivare tra pochi secondi.' : 'Non è arrivata: prova a disattivare e riattivare.'); } catch (e) { toast(e.message); }
+  },
+  'push-togli'(el) { S.ui.conferma = 'push' + el.dataset.id; render(); },
+  async 'push-togli-ok'(el) {
+    S.ui.conferma = null;
+    try { await api.pushTogli(S.token, el.dataset.id); toast('Telefono tolto.'); } catch (e) { toast(e.message); }
+    caricaPush();
+  },
+
+  async 'email-aggiungi'(el) {
+    const indirizzo = document.getElementById('emailNuova')?.value.trim(), nome = document.getElementById('emailNome')?.value.trim();
+    if (!indirizzo) { toast('Scrivi un indirizzo email.'); return; }
+    el.disabled = true;
+    try {
+      const d = await api.emailAggiungi(S.token, indirizzo, nome);
+      toast(d.stato === 'attivo' ? 'Questo indirizzo riceve già i promemoria.' : 'Ho mandato a ' + d.indirizzo + ' un\'email per confermare.', 5000);
+    } catch (e) { toast(e.message); }
+    caricaEmail();
+  },
+  async 'email-conferma'(el) {
+    try { await api.emailConferma(S.token, el.dataset.id); toast('Email di conferma rimandata.'); } catch (e) { toast(e.message); }
+  },
+  'email-togli'(el) { S.ui.conferma = 'email' + el.dataset.id; render(); },
+  async 'email-togli-ok'(el) {
+    S.ui.conferma = null;
+    try { await api.emailTogli(S.token, el.dataset.id); toast('Indirizzo tolto.'); } catch (e) { toast(e.message); }
+    caricaEmail();
+  },
+  'email-modello-apri'() { S.ui.emailModello = !S.ui.emailModello; render(); },
+  'email-segnaposto'(el) {
+    const t = document.querySelector('[data-bind="email-corpo"]');
+    const ins = '{' + el.dataset.v + '}';
+    const fermo = !t.selectionStart && !t.selectionEnd && t.value; // campo mai toccato: aggiungo in fondo
+    const i = fermo ? t.value.length : (t.selectionStart ?? t.value.length);
+    if (fermo) t.setSelectionRange(i, i);
+    t.value = t.value.slice(0, i) + ins + t.value.slice(t.selectionEnd ?? i);
+    S.ui.email.bozza.corpo = t.value;
+    t.focus(); t.selectionStart = t.selectionEnd = i + ins.length;
+  },
+  async 'email-anteprima'() {
+    const b = S.ui.email.bozza;
+    try { S.ui.email.anteprima = await api.emailAnteprima(S.token, b.oggetto, b.corpo); render(); } catch (e) { toast(e.message); }
+  },
+  async 'email-modello-salva'() {
+    const b = S.ui.email.bozza;
+    try { S.ui.email.modello = (await api.emailModello(S.token, b.oggetto, b.corpo)).modello; toast('Oggetto e testo salvati.'); } catch (e) { toast(e.message); }
+  },
+  async 'email-modello-predefinito'() {
+    try {
+      S.ui.email.modello = (await api.emailModello(S.token, '', '')).modello;
+      S.ui.email.bozza = { ...S.ui.email.modello }; S.ui.email.anteprima = null;
+      render(); toast('Ripristinato il testo predefinito.');
+    } catch (e) { toast(e.message); }
+  },
+  async 'email-prova'() {
+    try { const r = await api.emailProva(S.token); toast('Email di prova mandata a ' + r.inviati + ' indirizzi.'); } catch (e) { toast(e.message); }
   },
   'gruppo-icone'(el) { S.ui.iconeGruppo = S.ui.iconeGruppo === +el.dataset.i ? null : +el.dataset.i; render(); },
   'gruppo-icona'(el) { S.ui.iconeGruppo = null; modifica((d) => { d.gruppi[+el.dataset.i].icona = el.dataset.v; }); },
@@ -479,6 +672,8 @@ export const LEGAMI = {
     return true;
   },
   'fatto-prossima'(el) { S.ui.fattoProssima = el.value; },
+  'email-oggetto'(el) { S.ui.email.bozza.oggetto = el.value; },
+  'email-corpo'(el) { S.ui.email.bozza.corpo = el.value; },
   'schema-settimane'(el) { S.ui.settimane = +el.value; return true; },
   'auto-nome'(el) { S.ui.auto.nome = el.value; },
   'auto-scadenza'(el) { S.ui.auto.scadenze[el.dataset.k] = el.value; },
