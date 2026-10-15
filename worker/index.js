@@ -1,6 +1,7 @@
 // Cloudflare Worker: API delle bacheche, feed calendario e manifest dell'app.
 // Tutto il resto (la web app in web/) lo serve direttamente Cloudflare come file statici.
 import { ArchivioD1 } from './archivio.js';
+import { creaTelegram, segretoWebhook, gestisciAggiornamento, inviaAvvisi, descrizioneIscrizione } from './telegram.js';
 import { normalizza, bachecaVuota } from '../web/core/modello.js';
 import { generaICS } from '../web/core/ics.js';
 import { oggi, piuGiorni, piuMesi } from '../web/core/date.js';
@@ -43,9 +44,9 @@ const risposta = (riga, permesso, extra = {}) => ({
 });
 
 /**
- * Gestisce una richiesta. `archivio` è iniettabile per i test.
+ * Gestisce una richiesta. `archivio` e `telegram` sono iniettabili per i test.
  */
-export async function gestisci(request, env, archivio = new ArchivioD1(env.DB)) {
+export async function gestisci(request, env, archivio = new ArchivioD1(env.DB), telegram = creaTelegram(env.TELEGRAM_BOT_TOKEN)) {
   const url = new URL(request.url);
   const parti = url.pathname.split('/').filter(Boolean);
   const metodo = request.method;
@@ -54,7 +55,19 @@ export async function gestisci(request, env, archivio = new ArchivioD1(env.DB)) 
   try {
     // ---------- configurazione pubblica ----------
     if (url.pathname === '/api/config' && metodo === 'GET') {
-      return json({ serveCodice: !!env.CODICE_INVITO });
+      return json({ serveCodice: !!env.CODICE_INVITO, telegram: !!telegram });
+    }
+
+    // ---------- webhook del bot Telegram ----------
+    if (url.pathname === '/telegram/webhook' && metodo === 'POST') {
+      if (!telegram) return new Response('Telegram non configurato', { status: 404 });
+      if (request.headers.get('x-telegram-bot-api-secret-token') !== await segretoWebhook(env.TELEGRAM_BOT_TOKEN)) return new Response('No', { status: 401 });
+      try {
+        await gestisciAggiornamento(await request.json(), { archivio, telegram });
+      } catch (e) {
+        console.error('telegram', e); // rispondo comunque 200, altrimenti Telegram ripete lo stesso messaggio all'infinito
+      }
+      return new Response('ok');
     }
 
     // ---------- nuova bacheca ----------
@@ -80,6 +93,49 @@ export async function gestisci(request, env, archivio = new ArchivioD1(env.DB)) 
       if (azione === '' && metodo === 'GET') {
         return json(risposta(riga, permesso, permesso === 'modifica' ? { lettura: riga.token_lettura } : {}));
       }
+      // ---------- Telegram: /api/b/<token>/telegram[/collega|/prova|/<chat>] ----------
+      if (azione === 'telegram') {
+        const sotto = parti[4] ?? '';
+        if (!telegram) return sotto === '' && metodo === 'GET' ? json({ attivo: false, iscrizioni: [] }) : errore(503, 'Telegram non è configurato su questo server.');
+        if (sotto === 'collega' && metodo === 'POST') {
+          const codice = nuovoToken(12);
+          await archivio.creaCodiceTelegram({
+            codice, bachecaId: riga.id, modifica: permesso === 'modifica', origine: url.origin,
+            scade: new Date(Date.now() + 3600_000).toISOString(),
+          });
+          const bot = await telegram.nomeBot();
+          return json({ bot, link: 'https://t.me/' + bot + '?start=' + codice, linkGruppo: 'https://t.me/' + bot + '?startgroup=' + codice });
+        }
+        if (permesso !== 'modifica') {
+          return sotto === '' && metodo === 'GET' ? json({ attivo: true, iscrizioni: [] }) : errore(403, 'Questo è un link di sola lettura.');
+        }
+        const bacheca = normalizza(JSON.parse(riga.dati));
+        if (sotto === '' && metodo === 'GET') {
+          const iscr = await archivio.iscrizioniTelegram(riga.id);
+          return json({ attivo: true, bot: await telegram.nomeBot().catch(() => null), iscrizioni: iscr.map((i) => descrizioneIscrizione(i, bacheca)) });
+        }
+        if (sotto === 'prova' && metodo === 'POST') {
+          const iscr = await archivio.iscrizioniTelegram(riga.id);
+          let ok = 0;
+          for (const i of iscr) {
+            try {
+              await telegram.invia(i.chat_id, 'Messaggio di prova da <b>' + bacheca.nome.replace(/[<>&]/g, '') + '</b>: gli avvisi arriveranno qui.');
+              ok++;
+            } catch { /* chat non raggiungibile */ }
+          }
+          return json({ inviati: ok, totale: iscr.length });
+        }
+        if (sotto && metodo === 'PUT') {
+          const corpo = await leggiCorpo(request);
+          const filtro = Array.isArray(corpo.filtro) ? [...new Set(corpo.filtro.map(String))].filter((g) => g === '' || bacheca.gruppi.some((x) => x.id === g)) : null;
+          return (await archivio.filtroTelegram(riga.id, sotto, filtro)) ? json({ filtro }) : errore(404, 'Chat non trovata.');
+        }
+        if (sotto && metodo === 'DELETE') {
+          return (await archivio.rimuoviTelegram(riga.id, sotto)) ? json({ ok: true }) : errore(404, 'Chat non trovata.');
+        }
+        return errore(405, 'Operazione non supportata.');
+      }
+
       if (permesso !== 'modifica') return errore(403, 'Questo è un link di sola lettura.');
 
       if (azione === '' && metodo === 'PUT') {
@@ -157,4 +213,9 @@ export async function gestisci(request, env, archivio = new ArchivioD1(env.DB)) 
 
 export default {
   fetch: (request, env) => gestisci(request, env),
+  // Cron Trigger (ogni 5 minuti, vedi wrangler.jsonc): manda gli avvisi su Telegram
+  scheduled: (controller, env, ctx) => {
+    ctx.waitUntil(inviaAvvisi({ archivio: new ArchivioD1(env.DB), telegram: creaTelegram(env.TELEGRAM_BOT_TOKEN), adesso: new Date(controller.scheduledTime) })
+      .then((r) => { if (r.inviati) console.log('telegram: inviati', r.inviati); }));
+  },
 };

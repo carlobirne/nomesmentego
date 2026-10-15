@@ -3,6 +3,7 @@
 #   CLOUDFLARE_API_TOKEN   token con il modello "Edit Cloudflare Workers" + permesso "D1: Edit"
 #   CLOUDFLARE_ACCOUNT_ID  l'id del tuo account Cloudflare
 #   CODICE_INVITO          (facoltativo) parola da chiedere a chi crea una nuova bacheca
+#   TELEGRAM_BOT_TOKEN     (facoltativo) token del bot creato con @BotFather: attiva gli avvisi su Telegram
 name: Test e pubblicazione
 
 on:
@@ -69,3 +70,26 @@ jobs:
           else
             echo "Nessun codice di invito: chiunque conosca l'indirizzo può creare una bacheca."
           fi
+      - name: Bot Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          URL_APP: ${{ steps.pubblica.outputs.url }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+            echo "Nessun TELEGRAM_BOT_TOKEN: avvisi su Telegram disattivati."
+            exit 0
+          fi
+          printf '%s' "$TELEGRAM_BOT_TOKEN" | npx wrangler secret put TELEGRAM_BOT_TOKEN
+          # stesso segreto calcolato dal Worker (worker/telegram.js, segretoWebhook)
+          SEGRETO=$(printf 'nomesmentego-webhook:%s' "$TELEGRAM_BOT_TOKEN" | sha256sum | cut -c1-48)
+          API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
+          curl -fsS "$API/setWebhook" -H 'content-type: application/json' \
+            -d "{\"url\":\"$URL_APP/telegram/webhook\",\"secret_token\":\"$SEGRETO\",\"allowed_updates\":[\"message\",\"callback_query\",\"my_chat_member\"],\"drop_pending_updates\":true}" > /dev/null
+          curl -fsS "$API/setMyCommands" -H 'content-type: application/json' \
+            -d '{"commands":[{"command":"oggi","description":"Cosa c'"'"'è da ricordare oggi"},{"command":"stop","description":"Non ricevere più avvisi qui"}],"language_code":"it"}' > /dev/null
+          curl -fsS "$API/setMyCommands" -H 'content-type: application/json' \
+            -d '{"commands":[{"command":"oggi","description":"Cosa c'"'"'è da ricordare oggi"},{"command":"stop","description":"Non ricevere più avvisi qui"}]}' > /dev/null
+          NOME=$(curl -fsS "$API/getMe" | node -pe 'JSON.parse(require("fs").readFileSync(0)).result.username')
+          echo "Bot Telegram collegato: @$NOME"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Bot Telegram: **@$NOME** (webhook registrato)" >> "$GITHUB_STEP_SUMMARY"

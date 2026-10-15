@@ -25,6 +25,11 @@ export const api = {
   storico: (token) => chiama('GET', '/api/b/' + token + '/storico'),
   copia: (token, v) => chiama('GET', '/api/b/' + token + '/storico/' + v),
   rigenera: (token, quale) => chiama('POST', '/api/b/' + token + '/rigenera', { quale }),
+  telegram: (token) => chiama('GET', '/api/b/' + token + '/telegram'),
+  telegramCollega: (token) => chiama('POST', '/api/b/' + token + '/telegram/collega'),
+  telegramProva: (token) => chiama('POST', '/api/b/' + token + '/telegram/prova'),
+  telegramFiltro: (token, chat, filtro) => chiama('PUT', '/api/b/' + token + '/telegram/' + encodeURIComponent(chat), { filtro }),
+  telegramTogli: (token, chat) => chiama('DELETE', '/api/b/' + token + '/telegram/' + encodeURIComponent(chat)),
 };
 
 /* bacheche aperte su questo dispositivo, per ritrovarle dalla pagina iniziale */

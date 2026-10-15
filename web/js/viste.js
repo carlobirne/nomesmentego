@@ -256,6 +256,8 @@ export function vistaCondividi() {
     '<h3>Solo dal telefono Android</h3><p class="small">Installa l\'app <b>ICSx⁵</b> (gratis su F-Droid, pochi euro sul Play Store), premi <b>+</b> e incolla l\'indirizzo copiato: il calendario compare nell\'app Calendario del telefono, anche in Google Calendar, e si aggiorna più spesso.</p>' +
     '<p class="small muted">Non vuoi abbonarti? <button class="btn ghost piccolo" data-act="ics-scarica">Scarica un file .ics</button> con i prossimi 6 mesi (non si aggiorna da solo).</p></details></section>';
 
+  h += vistaTelegram();
+
   h += '<section class="card"><h2>' + icona('casa', 'titolo') + 'Sulla schermata Home</h2><p>Così apri la bacheca come un\'app.</p><ul class="passi-guida">' +
     '<li><b>iPhone</b> (Safari): tocca Condividi › <b>Aggiungi alla schermata Home</b>.</li>' +
     '<li><b>Android</b> (Chrome): menu con i tre puntini › <b>Aggiungi a schermata Home</b> (o "Installa app").</li></ul></section>';
@@ -299,6 +301,65 @@ export function vistaCondividi() {
     (S.ui.conferma === 'rig-lettura' ? '<button class="btn danger" data-act="rigenera-ok" data-quale="lettura">Conferma: cambia sola lettura e calendario</button>' : '<button class="btn danger" data-act="rigenera" data-quale="lettura">Cambia sola lettura e calendario</button>') +
     '</div></section>';
   return h;
+}
+
+
+/* ---------- avvisi su Telegram ---------- */
+const VALIDITA_LINK = 50 * 60 * 1000; // il codice dura un'ora sul server
+
+async function caricaTelegram() {
+  const tg = S.ui.tg = { ...(S.ui.tg || {}), caricamento: true };
+  try {
+    Object.assign(tg, await api.telegram(S.token));
+    if (tg.attivo && (!tg.link || Date.now() - tg.creato > VALIDITA_LINK)) {
+      Object.assign(tg, await api.telegramCollega(S.token), { creato: Date.now() });
+    }
+  } catch (e) { tg.errore = e.message; }
+  tg.caricamento = false;
+  render();
+}
+
+function vistaTelegram() {
+  const tg = S.ui.tg;
+  const mod = S.permesso === 'modifica';
+  if (!tg) { caricaTelegram(); return ''; }
+  if (tg.caricamento && !tg.attivo) return '';
+  if (!tg.attivo) {
+    return mod ? '<section class="card"><h2>' + icona('telefono', 'titolo') + 'Avvisi su Telegram</h2><p class="notice small">Il bot Telegram non è ancora configurato su questo server: chi gestisce l\'app deve aggiungere il segreto <b>TELEGRAM_BOT_TOKEN</b> (vedi il README).</p></section>' : '';
+  }
+  let h = '<section class="card"><h2>' + icona('telefono', 'titolo') + 'Avvisi su Telegram</h2>' +
+    '<p>Ricevi i promemoria come messaggi su Telegram, all\'ora di ogni avviso. Va bene anche un gruppo di famiglia. Per le scadenze c\'è il tasto <b>Fatto</b> direttamente nel messaggio.</p>';
+  if (tg.errore) h += '<p class="notice attenzione small">' + esc(tg.errore) + '</p>';
+  if (tg.link) {
+    h += '<div class="stack"><a class="btn primary big" href="' + esc(tg.link) + '" target="_blank" rel="noopener">Collega la mia chat Telegram</a>' +
+      '<a class="btn" href="' + esc(tg.linkGruppo) + '" target="_blank" rel="noopener">Collega un gruppo Telegram</a></div>' +
+      '<p class="small muted" style="margin:10px 0 0">Si apre Telegram: tocca <b>Avvia</b> (o scegli il gruppo). Poi torna qui e tocca <b>Aggiorna</b>.</p>';
+  }
+  if (mod) {
+    h += '<h3 style="margin-top:16px">Chat collegate</h3>';
+    if (!tg.iscrizioni?.length) h += '<p class="muted small">Ancora nessuna.</p>';
+    const gruppi = S.dati.gruppi;
+    for (const i of tg.iscrizioni || []) {
+      h += '<div class="riga-ed" style="align-items:center">' + icona('uccello', 'mini') + '<div style="flex:1 1 160px;min-width:0"><b>' + esc(i.nome) + '</b>' +
+        (i.modifica ? '' : '<div class="small muted">Collegata con il link di sola lettura: niente tasto "Fatto"</div>') + '</div>' +
+        (S.ui.conferma === 'tg' + i.chat ? '<button class="btn danger piccolo" data-act="tg-togli-ok" data-chat="' + esc(i.chat) + '">Conferma</button>'
+          : '<button class="btn danger piccolo" data-act="tg-togli" data-chat="' + esc(i.chat) + '">Togli</button>');
+      if (gruppi.length) {
+        const f = i.filtro;
+        const scelta = (id, nome) => '<button class="chip" data-act="tg-filtro" data-chat="' + esc(i.chat) + '" data-g="' + esc(id) + '" aria-pressed="' + (!!f && f.includes(id)) + '">' + esc(nome) + '</button>';
+        h += '<div style="flex-basis:100%"><div class="small" style="font-weight:700;margin-bottom:6px">Riceve</div><div class="chips">' +
+          '<button class="chip" data-act="tg-filtro" data-chat="' + esc(i.chat) + '" data-g="*" aria-pressed="' + !f + '">Tutto</button>' +
+          gruppi.map((g) => scelta(g.id, g.nome)).join('') + scelta('', 'Senza gruppo') + '</div></div>';
+      }
+      h += '</div>';
+    }
+    h += '<div class="row" style="margin-top:12px"><button class="btn" data-act="tg-aggiorna">Aggiorna</button>' +
+      (tg.iscrizioni?.length ? '<button class="btn" data-act="tg-prova">Manda un messaggio di prova</button>' : '') + '</div>';
+  } else {
+    h += '<div class="row" style="margin-top:12px"><button class="btn" data-act="tg-aggiorna">Aggiorna</button></div>';
+  }
+  h += '<p class="small muted" style="margin:10px 0 0">Comandi del bot: <b>/oggi</b> per vedere cosa c\'è oggi, <b>/stop</b> per non ricevere più messaggi.</p>';
+  return h + '</section>';
 }
 
 /* ---------- azioni ---------- */
@@ -385,6 +446,25 @@ export const AZIONI = {
   },
   'gruppo-add'() {
     modifica((d) => d.gruppi.push({ id: nuovoId('g'), nome: 'Nuovo gruppo', icona: 'casa', colore: COLORI[d.gruppi.length % COLORI.length] }));
+  },
+  'tg-aggiorna'() { caricaTelegram(); },
+  async 'tg-prova'() {
+    try { const r = await api.telegramProva(S.token); toast('Messaggio mandato a ' + r.inviati + ' chat su ' + r.totale + '.'); } catch (e) { toast(e.message); }
+  },
+  'tg-togli'(el) { S.ui.conferma = 'tg' + el.dataset.chat; render(); },
+  async 'tg-togli-ok'(el) {
+    S.ui.conferma = null;
+    try { await api.telegramTogli(S.token, el.dataset.chat); toast('Chat scollegata.'); } catch (e) { toast(e.message); }
+    caricaTelegram();
+  },
+  async 'tg-filtro'(el) {
+    const i = S.ui.tg.iscrizioni.find((x) => x.chat === el.dataset.chat);
+    const g = el.dataset.g;
+    let f = g === '*' ? null : (i.filtro ? [...i.filtro] : []);
+    if (f) f = f.includes(g) ? f.filter((x) => x !== g) : [...f, g];
+    if (f && !f.length) f = null;
+    i.filtro = f; render();
+    try { i.filtro = (await api.telegramFiltro(S.token, i.chat, f)).filtro; } catch (e) { toast(e.message); caricaTelegram(); }
   },
   'gruppo-icone'(el) { S.ui.iconeGruppo = S.ui.iconeGruppo === +el.dataset.i ? null : +el.dataset.i; render(); },
   'gruppo-icona'(el) { S.ui.iconeGruppo = null; modifica((d) => { d.gruppi[+el.dataset.i].icona = el.dataset.v; }); },

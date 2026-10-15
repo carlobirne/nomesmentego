@@ -58,7 +58,7 @@ document.addEventListener('click', async (ev) => {
   const fn = AZIONI[el.dataset.act] || AZIONI_EDITOR[el.dataset.act];
   if (!fn) return;
   ev.preventDefault();
-  if (!['ripristina', 'rigenera', 'gruppo-del', 'ed-elimina', 'ed-sett-del'].includes(el.dataset.act) && !el.dataset.act.endsWith('-ok')) S.ui.conferma = null;
+  if (!['ripristina', 'rigenera', 'gruppo-del', 'ed-elimina', 'ed-sett-del', 'tg-togli'].includes(el.dataset.act) && !el.dataset.act.endsWith('-ok')) S.ui.conferma = null;
   try { await fn(el, ev); } catch (e) { console.error(e); toast('Qualcosa non ha funzionato: ' + e.message); }
 });
 
