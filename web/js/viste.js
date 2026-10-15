@@ -57,7 +57,7 @@ export function vistaHome() {
     '</ol>' +
     '<p class="muted small">Niente account e niente password: ogni bacheca ha il suo link segreto. Chi ha il link la vede e la modifica dal browser.</p></section>';
   h += '<section class="card"><h2>Crea una bacheca</h2><div class="stack">' +
-    '<label class="field">Come la chiamiamo?<input type="text" id="nomeNuova" class="grande" placeholder="es. I miei promemoria settimanali" maxlength="60"></label>' +
+    '<label class="field">Come la chiamiamo?<input type="text" id="nomeNuova" class="grande" placeholder="es. promemoria settimanali, ricorrenze auto, ..." maxlength="60"></label>' +
     (S.ui.serveCodice ? '<label class="field">Codice di invito<span class="aiuto">Te lo dà chi ha installato l\'app.</span><input type="text" id="codiceNuova" autocomplete="off"></label>' : '') +
     '<button class="btn primary big" data-act="crea-bacheca">Crea la bacheca</button></div></section>';
   if (r.length) {
