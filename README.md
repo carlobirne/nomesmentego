@@ -39,6 +39,86 @@ sono ampiamente sufficienti; i valori aggiornati sono su
 [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/).
 Il codice è pubblicato in automatico da GitHub a ogni modifica del branch `main`.
 
+## Dove sono i dati e chi li vede
+
+```mermaid
+flowchart TB
+  GH["GitHub<br/>codice + Actions"]
+  subgraph U["Chi usa l'app"]
+    BR["Browser<br/>bacheca con link segreto"]
+    CAL["Calendario Apple / Google<br/>abbonato al feed"]
+    TGU["Telegram<br/>comandi e tasto Fatto"]
+  end
+  subgraph CF["Cloudflare, piano gratuito"]
+    W["Worker nomesmentego<br/>pagine · API · feed .ics · webhook"]
+    D1[("Database D1<br/>bacheche e copie<br/>chat, telefoni, email")]
+    CRON["Cron ogni 5 minuti<br/>avvisi da mandare"]
+  end
+  subgraph E["Servizi esterni, solo se attivati"]
+    TAPI["Telegram Bot API"]
+    BREVO["Brevo o Resend"]
+    PUSH["Servizi push<br/>Google · Apple · Mozilla"]
+  end
+  subgraph A["Dove arrivano gli avvisi"]
+    TGA["Chat Telegram"]
+    MAIL["Casella email"]
+    NOT["Notifica sul telefono"]
+  end
+  GH -. "deploy a ogni push su main" .-> W
+  BR --> W
+  CAL --> W
+  TGU --> W
+  W <--> D1
+  CRON --> W
+  W --> TAPI --> TGA
+  W --> BREVO --> MAIL
+  W -- "cifrate" --> PUSH --> NOT
+```
+
+**Non ci sono file di testo**: ogni bacheca è una riga nel database **D1** di Cloudflare (`nomesmentego`),
+sul tuo account. Il telefono non è il "proprietario" dei dati, è solo una finestra sul server.
+
+| Tabella | Cosa contiene |
+|---|---|
+| `bacheche` | una riga per bacheca: tutti i promemoria in una colonna `dati` (JSON), versione, date, link di sola lettura e **impronta** del link di modifica (SHA-256: dal database non si risale al link) |
+| `storico` | copie di sicurezza automatiche: al massimo una ogni 10 minuti, le ultime 30 per bacheca |
+| `telegram_iscrizioni`, `telegram_codici` | chat Telegram collegate (id della chat e nome) e codici usa-e-getta per collegarle |
+| `notifiche` | telefoni con le notifiche dell'app (indirizzo del servizio push e chiavi) e indirizzi email, con il loro stato (da confermare / attivo) |
+| `impostazioni` | chiavi VAPID per le notifiche (create al primo uso) e modelli delle email per bacheca |
+
+Le tabelle sono definite in [`migrations/`](migrations). Si possono sfogliare dal pannello Cloudflare
+(*Storage & Databases › D1 › nomesmentego*), dove si possono anche fare query SQL. Solo chi ha accesso
+all'account Cloudflare vede il database.
+
+**Sul telefono** (memoria del browser, `localStorage`) restano solo:
+- l'elenco *Le tue bacheche* della pagina iniziale, cioè le scorciatoie alle bacheche **aperte su quel
+  dispositivo**: un altro telefono non lo vede, e *Togli* rimuove solo la scorciatoia, non la bacheca;
+- una copia dell'ultima versione di ogni bacheca aperta, per poterla guardare anche senza rete.
+
+**Chi può fare cosa**
+- Con il **link di modifica** (`/b/…`) si vede e si cambia la bacheca **da qualsiasi dispositivo**.
+- Con il **link di sola lettura** (`/v/…`) la si vede, si riceve il calendario e ci si iscrive alle
+  notifiche, ma non si modifica niente.
+- Senza link non si arriva a nessuna bacheca: non esiste un elenco pubblico e il server non ha un
+  comando per cancellarle.
+- Per **crearne** una nuova serve il codice di invito (`CODICE_INVITO`), se impostato.
+- Se un link finisce nelle mani sbagliate: *Telefono e condivisione › Cambia i link*. Quello vecchio
+  smette subito di funzionare.
+
+**Copie e cancellazione**
+- *Telefono e condivisione › Copie di sicurezza*: ripristino di una versione precedente, oppure
+  *Scarica una copia* (file `.json`, reimportabile con *Importa da file*).
+- Per eliminare davvero una bacheca oggi si passa dalla console D1:
+  `DELETE FROM bacheche WHERE id = '…'`. Le righe collegate (storico, Telegram, notifiche, email) si
+  cancellano con lei; il modello delle email resta in `impostazioni` con chiave `email-modello:<id>`.
+
+**Servizi esterni che vedono il contenuto degli avvisi** (solo se usati)
+- **Calendario in abbonamento**: Google o Apple scaricano il feed `/feed/<link di sola lettura>.ics`.
+- **Telegram**: i messaggi passano dai server di Telegram.
+- **Email**: i messaggi passano da Brevo (o Resend).
+- **Notifiche dell'app**: passano dal servizio push del browser (Google, Apple, Mozilla…), ma sono
+  cifrate per il singolo telefono e il servizio non può leggerle.
+
 ## Messa in linea (una volta sola, ~15 minuti)
 
 1. **Account Cloudflare** gratuito su <https://dash.cloudflare.com/sign-up>. Apri una volta
@@ -173,8 +253,9 @@ prototipo/           la vecchia app "Raccolta rifiuti" da cui siamo partiti
 | `GET`/`POST` | `/email/conferma/<token>`, `/email/stop/<token>` | pagine per confermare o disiscriversi (serve il pulsante) |
 | `POST` | `/telegram/webhook` | aggiornamenti da Telegram (verificati con il segreto derivato dal token) |
 
-Il link di modifica è salvato nel database solo come impronta SHA-256. Il server normalizza ogni bacheca
-con lo stesso codice dell'app (`web/core/modello.js`), quindi non accetta dati malformati.
+Il link di modifica è salvato nel database solo come impronta SHA-256 (vedi *Dove sono i dati e chi li vede*).
+Il server normalizza ogni bacheca con lo stesso codice dell'app (`web/core/modello.js`), quindi non accetta
+dati malformati.
 
 ## Prossimi passi
 
