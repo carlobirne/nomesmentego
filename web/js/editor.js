@@ -12,8 +12,8 @@ import { GIORNI, GIORNI_NOMI, MESI_NOMI, lunediDi, piuGiorni, fmtGiorno, fmt, va
 const GIORNI_SPECIALI = false;
 
 const TIPI = [
-  ['una-volta', 'Giorni specifici'], ['giornaliero', 'Ogni giorno'], ['settimanale', 'Ogni settimana'],
-  ['rotazione', 'Settimane con voci'], ['mensile', 'Ogni mese'], ['annuale', 'Ogni anno'],
+  ['una-volta', 'Giorni specifici'], ['giornaliero', 'Ogni tot giorni'], ['settimanale', 'Alcuni giorni della settimana'],
+  ['rotazione', 'Settimane con voci'], ['mensile', 'Alcuni giorni del mese'], ['annuale', 'Alcuni giorni dell\'anno'],
 ];
 const PRESET_AVVISI = [
   ['0-giorni', 'Il giorno stesso'], ['1-giorni', 'Il giorno prima'], ['2-giorni', '2 giorni prima'], ['3-giorni', '3 giorni prima'],
@@ -49,6 +49,8 @@ function riassuntoHTML() {
     (prox.length ? '<div class="small" style="margin-top:6px;font-weight:400">Prossime date: ' + prox.map((o) => esc(fmtGiorno(o.data) + (o.data.slice(0, 4) !== oggi().slice(0, 4) ? ' ' + o.data.slice(0, 4) : '')) + (o.voci.length ? ' (' + esc(nomiVoci(p, o.voci).join(', ')) + ')' : '')).join(' · ') + '</div>'
       : '<div class="small" style="margin-top:6px;font-weight:400">Nessuna data in arrivo con queste impostazioni.</div>');
 }
+
+const elencoE = (a) => a.length <= 1 ? a.join('') : a.slice(0, -1).join(', ') + ' e ' + a[a.length - 1];
 
 /* ---------- vista ---------- */
 export function vistaEditor() {
@@ -112,12 +114,18 @@ function editorQuando(p) {
             '<label class="field stretto">Giorno<select data-bind="q-giornoSett">' + GIORNI.map((g, i) => '<option value="' + g + '"' + (g === q.giornoSett ? ' selected' : '') + '>' + GIORNI_NOMI[i] + '</option>').join('') + '</select></label>') +
         '<label class="field stretto">Ogni<select data-bind="q-ogni">' + [1, 2, 3, 4, 6, 12].map((n) => '<option value="' + n + '"' + (n === q.ogni ? ' selected' : '') + '>' + (n === 1 ? 'mese' : n + ' mesi') + '</option>').join('') + '</select></label>' +
         (q.ogni > 1 ? '<label class="field">A partire dal<input type="date" data-bind="q-inizio" value="' + q.inizio + '"></label>' : '') + '</div>';
-    case 'annuale':
-      return '<div class="row end"><label class="field stretto">Giorno<select data-bind="q-giorno">' + Array.from({ length: 31 }, (_, i) => i + 1).map((n) => '<option value="' + n + '"' + (n === q.giorno ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>' +
-        '<label class="field">Mese<select data-bind="q-mese">' + MESI_NOMI.map((m, i) => '<option value="' + (i + 1) + '"' + (i + 1 === q.mese ? ' selected' : '') + '>' + m + '</option>').join('') + '</select></label>' +
-        '<label class="field stretto">Ogni<select data-bind="q-ogni">' + [1, 2, 3, 4, 5, 10].map((n) => '<option value="' + n + '"' + (n === q.ogni ? ' selected' : '') + '>' + (n === 1 ? 'anno' : n + ' anni') + '</option>').join('') + '</select></label>' +
+    case 'annuale': {
+      const giorni = Array.from({ length: 31 }, (_, i) => i + 1);
+      return '<p class="muted small" style="margin-top:0">Compleanni, anniversari, scadenze annuali: aggiungi tutti i giorni che vuoi.</p>' +
+        q.giorniAnno.map((x, i) => '<div class="riga-ed compatta">' +
+          '<select data-bind="q-giorno" data-i="' + i + '" aria-label="Giorno" style="flex:0 0 auto;width:auto">' + giorni.map((n) => '<option value="' + n + '"' + (n === x.giorno ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>' +
+          '<select data-bind="q-mese" data-i="' + i + '" aria-label="Mese" style="flex:1 1 130px;width:auto">' + MESI_NOMI.map((m, k) => '<option value="' + (k + 1) + '"' + (k + 1 === x.mese ? ' selected' : '') + '>' + m + '</option>').join('') + '</select>' +
+          (q.giorniAnno.length > 1 ? '<button class="btn danger piccolo" data-act="ed-anno-del" data-i="' + i + '">Togli</button>' : '') + '</div>').join('') +
+        '<button class="btn piccolo" data-act="ed-anno-add" style="margin-top:6px">+ Aggiungi un giorno</button>' +
+        '<div class="row end" style="margin-top:12px"><label class="field stretto">Ogni<select data-bind="q-ogni">' + [1, 2, 3, 4, 5, 10].map((n) => '<option value="' + n + '"' + (n === q.ogni ? ' selected' : '') + '>' + (n === 1 ? 'anno' : n + ' anni') + '</option>').join('') + '</select></label>' +
         (q.ogni > 1 ? '<label class="field stretto">A partire dal<input type="number" min="2000" max="2100" data-bind="q-anno" value="' + q.inizio.slice(0, 4) + '"></label>' : '') + '</div>' +
-        (q.giorno > 28 ? '<p class="small muted" style="margin:8px 0 0">Se il mese è più corto vale l\'ultimo giorno del mese.</p>' : '');
+        (q.giorniAnno.some((x) => x.giorno > 28) ? '<p class="small muted" style="margin:8px 0 0">Se il mese è più corto (es. il 29 febbraio) vale l\'ultimo giorno del mese.</p>' : '');
+    }
   }
   return '';
 }
@@ -153,7 +161,9 @@ function editorRotazione(p) {
   const q = p.quando, t = oggi();
   const sel = Math.min(S.ui.settSel ?? 0, q.settimane.length - 1);
   const w = q.settimane[sel];
-  let h = '<p class="muted small">Per esempio: 2 settimane che si alternano, settimana A e settimana B. Se ti serve, aggiungi <b>voci</b> (per differenziare gli avvisi) e scegli quali voci associare ai giorni. Se vuoi una sola settimana con le voci, basta togliere l\'altra.</p>';
+  let h = q.settimane.length === 1
+    ? '<p class="muted small">Per ogni giorno della settimana scegli quali <b>voci</b> valgono (per differenziare gli avvisi). Se ti servono settimane diverse che si alternano (settimana A e settimana B), premi <b>+</b> accanto alla settimana.</p>'
+    : '<p class="muted small">Per esempio: 2 settimane che si alternano, settimana A e settimana B. Se ti serve, aggiungi <b>voci</b> (per differenziare gli avvisi) e scegli quali voci associare ai giorni. Se vuoi una sola settimana con le voci, basta togliere l\'altra.</p>';
   // voci
   h += '<details class="altro"' + (p.voci.length ? ' open' : '') + '><summary>Voci (' + p.voci.length + ')</summary>';
   p.voci.forEach((v, i) => {
@@ -188,10 +198,26 @@ function editorRotazione(p) {
   return h;
 }
 
+/** Esempio del testo dell'avviso adatto al modello da cui è nato il promemoria. */
+const ESEMPI_AVVISO = {
+  rifiuti: { segnaposto: 'es. Metti fuori stasera: {voci}', voci: ['Umido', 'Plastica'], frase: 'Metti fuori stasera: {voci}' },
+  auto: { segnaposto: 'es. Prenota dal meccanico' },
+  compleanno: { segnaposto: 'es. Compra il regalo' },
+  medicina: { segnaposto: 'es. Prendi l\'antibiotico dopo mangiato', voci: ['Vitamina D', 'Antibiotico'], frase: 'Prendi {voci} dopo mangiato' },
+};
+function esempioAvviso(p) {
+  const da = { medicina: 'medicina', spazzatura: 'rifiuti', compleanno: 'compleanno' }[p.icona]; // promemoria creati prima
+  return ESEMPI_AVVISO[p.modello || da || (S.dati.gruppi.find((g) => g.id === p.gruppo)?.icona === 'auto' ? 'auto' : '')] || ESEMPI_AVVISO.medicina;
+}
+
 function editorAvvisi(p) {
   let h = '<p class="muted small">Ogni avviso diventa un promemoria sul calendario del telefono, all\'ora che scegli. Puoi impostare anche più orari diversi.</p>';
   if (!p.avvisi.length) h += '<p class="notice small">Nessun avviso: il promemoria si vedrà nell\'app e nel calendario, ma senza notifica.</p>';
   const voci = p.voci.map((v) => v.nome);
+  const es = esempioAvviso(p);
+  const aiuto = '(facoltativo: se vuoto uso il nome del promemoria' +
+    (es.voci ? '; puoi usare le voci definite per questo promemoria scrivendo {voci}' + (voci.length ? ', cioè ' + esc(voci.join(', ')) : ' (le voci si aggiungono con «Settimane con voci»)') +
+      '. Es. con le voci ' + elencoE(es.voci) + ', «' + es.frase + '» diventa «' + es.frase.replace('{voci}', es.voci.join(', ')) + '»' : '') + ')';
   p.avvisi.forEach((a, i) => {
     const chiave = a.prima + '-' + a.unita;
     const preset = PRESET_AVVISI.some(([v]) => v === chiave);
@@ -204,10 +230,8 @@ function editorAvvisi(p) {
         '<label class="field stretto">Cosa<select data-bind="avv-unita" data-i="' + i + '">' + ['giorni', 'settimane', 'mesi'].map((u) => '<option' + (u === a.unita ? ' selected' : '') + '>' + u + '</option>').join('') + '</select></label>' : '') +
       '<label class="field stretto">Ora<input type="time" data-bind="avv-ora" data-i="' + i + '" value="' + a.ora + '"></label>' +
       '<button class="btn danger piccolo" data-act="ed-avv-del" data-i="' + i + '" aria-label="Togli questo avviso">Togli</button>' +
-      '<label class="field" style="flex-basis:100%">Testo dell\'avviso <span class="aiuto">' + (i > 0 ? '(facoltativo, come sopra)' :
-        '(facoltativo: se vuoto uso il nome del promemoria; puoi usare le voci definite per questo promemoria scrivendo {voci}' +
-        (voci.length ? ', cioè ' + esc(voci.join(', ')) : '') + '). Es. con le voci Tachipirina e Vitamina D, «Prendi {voci} dopo colazione» diventa «Prendi Tachipirina, Vitamina D dopo colazione».') + '</span>' +
-      '<input type="text" data-bind="avv-testo" data-i="' + i + '" value="' + esc(a.testo) + '" placeholder="' + (voci.length ? 'es. Prendi {voci} dopo colazione' : 'es. Non parcheggiare in piazza stasera') + '" maxlength="140"></label></div>';
+      '<label class="field" style="flex-basis:100%">Testo dell\'avviso <span class="aiuto">' + (i > 0 ? '(facoltativo, come sopra)' : aiuto) + '</span>' +
+      '<input type="text" data-bind="avv-testo" data-i="' + i + '" value="' + esc(a.testo) + '" placeholder="' + esc(es.segnaposto) + '" maxlength="140"></label></div>';
   });
   if (p.avvisi.length < 6) h += '<button class="btn" data-act="ed-avv-add" style="margin-top:8px">+ Aggiungi ' + (p.avvisi.length ? 'un altro avviso' : 'un avviso') + '</button>';
   return h;
@@ -250,7 +274,7 @@ export const AZIONI_EDITOR = {
       'settimanale': { giorni: prima.tipo === 'rotazione' ? [] : [GIORNI[(new Date().getDay() + 6) % 7]] },
       'rotazione': { inizio: lunediDi(oggiISO), settimane: [{ nome: 'Settimana A', giorni: giorniVuoti() }, { nome: 'Settimana B', giorni: giorniVuoti() }] },
       'mensile': { modo: 'giorno', giorni: [+giorno.slice(8, 10)], inizio: oggiISO },
-      'annuale': { mese: +giorno.slice(5, 7), giorno: +giorno.slice(8, 10), ogni: 1, inizio: giorno },
+      'annuale': { giorniAnno: [{ mese: +giorno.slice(5, 7), giorno: +giorno.slice(8, 10) }], ogni: 1, inizio: giorno },
     }[t];
     p.quando = { tipo: t, ...base };
     if (prima.tipo === 'settimanale' && t === 'rotazione') { // porta i giorni già scelti in tutte le settimane
@@ -309,6 +333,14 @@ export const AZIONI_EDITOR = {
     render();
   },
   'ed-data-del'(el) { const q = S.bozza.quando; if (q.date.length > 1) q.date.splice(+el.dataset.i, 1); q.data = q.date[0]; render(); },
+  'ed-anno-add'() {
+    const ga = S.bozza.quando.giorniAnno;
+    if (ga.length >= 200) { toast('Al massimo 200 giorni.'); return; }
+    const t = oggi();
+    ga.push({ mese: +t.slice(5, 7), giorno: +t.slice(8, 10) });
+    render();
+  },
+  'ed-anno-del'(el) { const ga = S.bozza.quando.giorniAnno; if (ga.length > 1) ga.splice(+el.dataset.i, 1); render(); },
   'ed-mese-giorno'(el) {
     const q = S.bozza.quando, g = +el.dataset.v;
     if (q.giorni.includes(g)) { if (q.giorni.length > 1) q.giorni = q.giorni.filter((x) => x !== g); else toast('Serve almeno un giorno.'); } else q.giorni.push(g);
@@ -396,10 +428,10 @@ export const LEGAMI_EDITOR = {
   },
   'q-inizio'(el) { if (valida(el.value)) q().inizio = q().tipo === 'settimanale' ? lunediDi(el.value) : el.value; return true; },
   'q-ogni'(el) { q().ogni = +el.value; return true; },
-  'q-giorno'(el) { q().giorno = +el.value; return true; },
+  'q-giorno'(el) { q().giorniAnno[+el.dataset.i].giorno = +el.value; return true; },
   'q-n'(el) { q().n = +el.value; return true; },
   'q-giornoSett'(el) { q().giornoSett = el.value; return true; },
-  'q-mese'(el) { q().mese = +el.value; return true; },
+  'q-mese'(el) { q().giorniAnno[+el.dataset.i].mese = +el.value; return true; },
   'sett-nome'(el) { q().settimane[S.ui.settSel ?? 0].nome = el.value; },
   'sett-attuale'(el) {
     // sposta l'inizio del ciclo perché la settimana corrente sia quella scelta
