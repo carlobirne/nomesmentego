@@ -91,6 +91,8 @@ test('giro di invio: ora locale, filtro per gruppi, niente doppioni, recupero li
   // tasto Fatto solo per chi può modificare, link sempre alla sola lettura
   const bollo111 = a.tg.inviati.find((m) => m.chat === '111' && m.testo.includes('Bollo'));
   assert.deepEqual(bollo111.tastiera[0].map((t) => t.text), ['Fatto', 'Apri la bacheca']);
+  assert.match(bollo111.tastiera[0][0].callback_data, /^f\|[^|]+\|bollo\|20300131$/);
+  assert.match(bollo111.testo, /Scadenza: 31 gen 2030/);
   assert.equal(bollo111.tastiera[0][1].url, 'https://app.test/v/' + a.lettura);
   assert.deepEqual(a.tg.inviati.find((m) => m.chat === '-222').tastiera[0].map((t) => t.text), ['Apri la bacheca']);
 
@@ -116,14 +118,14 @@ test('tasto "Fatto" da Telegram, /oggi e /stop', async () => {
     await a.messaggio(chat, '/start ' + codiceDa(col.corpo.link), chat > 0 ? 'private' : 'group');
   }
   const bid = a.archivio.telegram.iscrizioni[0].bacheca_id;
-  const tasto = (chat) => a.webhook({ callback_query: { id: 'q' + chat, data: 'f|' + bid + '|bollo', from: { first_name: 'Carlo' }, message: { message_id: 5, chat: { id: chat } } } });
+  const tasto = (chat) => a.webhook({ callback_query: { id: 'q' + chat, data: 'f|' + bid + '|bollo|20300131', from: { first_name: 'Carlo' }, message: { message_id: 5, chat: { id: chat } } } });
 
   await tasto(-222);
   assert.match(a.tg.risposte.at(-1), /non si può modificare/);
   await tasto(111);
   assert.match(a.tg.risposte.at(-1), /^Segnato come fatto\. Prossima scadenza: 31 gen 2031\.$/);
   const b = (await a.chiama('GET', '/api/b/' + a.modifica)).corpo;
-  assert.equal(b.dati.promemoria.find((p) => p.id === 'bollo').quando.scadenza, '2031-01-31');
+  assert.equal(b.dati.promemoria.find((p) => p.id === 'bollo').scadenza.fattoFino, '2030-01-31');
   assert.equal(b.versione, 2);
   await tasto(111);
   assert.match(a.tg.risposte.at(-1), /già segnato/);

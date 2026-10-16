@@ -1,7 +1,7 @@
 // "Ricette" pronte per creare promemoria in un tocco. Restituiscono dati grezzi:
 // passano comunque da normalizza() prima di essere salvati.
-import { lunediDi, piu, fineMese, valida } from './date.js';
-import { nuovoId } from './modello.js';
+import { lunediDi, piu, piuGiorni, fineMese, valida } from './date.js';
+import { nuovoId, quandoDaScadenza } from './modello.js';
 
 const sera = (ora = '20:00', testo = '') => ({ prima: 1, unita: 'giorni', ora, testo });
 const mattina = (ora = '08:00', testo = '') => ({ prima: 0, unita: 'giorni', ora, testo });
@@ -25,37 +25,9 @@ export const MODELLI = [
     }),
   },
   {
-    id: 'settimana', icona: 'mercato', nome: 'Ogni settimana',
-    descrizione: 'Mercato, palestra, catechismo, pulizie…',
-    crea: (oggi) => ({
-      titolo: '', icona: 'mercato',
-      quando: { tipo: 'settimanale', giorni: [], ogni: 1, inizio: oggi },
-      avvisi: [sera('19:00')],
-    }),
-  },
-  {
     id: 'auto', icona: 'auto', nome: 'Auto',
     descrizione: 'Revisione, bollo, assicurazione, tagliando, gomme',
     speciale: true,
-  },
-  {
-    id: 'scadenza', icona: 'documento', nome: 'Una scadenza',
-    descrizione: "Carta d'identità, caldaia, abbonamenti, visite di controllo",
-    crea: (oggi) => ({
-      titolo: '', icona: 'documento',
-      quando: { tipo: 'scadenza', scadenza: piu(oggi, 1, 'mesi'), ripeti: { ogni: 1, unita: 'anni', da: 'scadenza' } },
-      avvisi: [giorniPrima(30), giorniPrima(7), mattina('09:00')],
-      insisti: true,
-    }),
-  },
-  {
-    id: 'mese', icona: 'calendario', nome: 'Ogni mese',
-    descrizione: 'Affitto, bollette, letture del contatore',
-    crea: (oggi) => ({
-      titolo: '', icona: 'calendario',
-      quando: { tipo: 'mensile', modo: 'giorno', giorno: 1, ogni: 1, inizio: oggi },
-      avvisi: [mattina('09:00')],
-    }),
   },
   {
     id: 'compleanno', icona: 'compleanno', nome: 'Compleanno o anniversario',
@@ -76,28 +48,28 @@ export const MODELLI = [
     }),
   },
   {
-    id: 'altro', icona: 'campanella', nome: 'Una volta sola',
-    descrizione: 'Un appuntamento o una cosa da non dimenticare',
+    id: 'personalizzato', icona: 'campanella', nome: 'Personalizzato',
+    descrizione: 'Scegli tu cosa, quando e ogni quanto: una volta, ogni settimana, ogni mese, ogni anno…',
     crea: (oggi) => ({
       titolo: '', icona: 'campanella',
-      quando: { tipo: 'una-volta', data: oggi },
-      avvisi: [sera('20:00'), mattina('08:00')],
+      quando: { tipo: 'una-volta', data: piuGiorni(oggi, 1) },
+      avvisi: [sera('20:00')],
     }),
   },
 ];
 
 export const VOCI_AUTO = [
   { id: 'revisione', nome: 'Revisione', aiuto: 'La prima a 4 anni dall\'immatricolazione, poi ogni 2 anni entro fine mese',
-    ripeti: { ogni: 2, unita: 'anni', da: 'fatto', fineMese: true } },
+    ripeti: { ogni: 2, unita: 'anni', fineMese: true } },
   { id: 'bollo', nome: 'Bollo', aiuto: 'Ogni anno',
-    ripeti: { ogni: 1, unita: 'anni', da: 'scadenza' } },
+    ripeti: { ogni: 1, unita: 'anni' } },
   { id: 'assicurazione', nome: 'Assicurazione', aiuto: 'Ogni anno',
-    ripeti: { ogni: 1, unita: 'anni', da: 'scadenza' } },
+    ripeti: { ogni: 1, unita: 'anni' } },
   { id: 'tagliando', nome: 'Tagliando', aiuto: 'Di solito ogni 2 anni o 25.000 km', nota: 'Entro 25.000 km o 2 anni: dipende dall\'auto.',
-    ripeti: { ogni: 2, unita: 'anni', da: 'fatto' } },
+    ripeti: { ogni: 2, unita: 'anni' } },
   { id: 'gomme', nome: 'Cambio gomme', aiuto: 'Estive/invernali: ogni 6 mesi',
     nota: 'Gomme invernali obbligatorie dal 15 novembre al 15 aprile (dove previsto). Controlla lo stato delle gomme.',
-    ripeti: { ogni: 6, unita: 'mesi', da: 'scadenza' } },
+    ripeti: { ogni: 6, unita: 'mesi' } },
 ];
 
 /** Prima revisione: fine del mese di immatricolazione + 4 anni. */
@@ -117,9 +89,10 @@ export function creaAuto({ nome, icona = 'auto', colore = '#e8231c', scadenze = 
     gruppo: gruppo.id,
     icona: '',
     nota: v.nota || '',
-    quando: { tipo: 'scadenza', scadenza: scadenze[v.id], ripeti: { ...v.ripeti } },
+    quando: quandoDaScadenza(scadenze[v.id], v.ripeti),
     avvisi: [giorniPrima(preavviso), giorniPrima(7), mattina('09:00')],
-    insisti: true,
+    // è una scadenza: se passa senza "Fatto" la ricordo ogni 3 giorni; le date precedenti contano come fatte
+    scadenza: { attiva: true, ogni: 3, fattoFino: piuGiorni(scadenze[v.id], -1) },
   }));
   return { gruppo, promemoria };
 }

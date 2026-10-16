@@ -4,7 +4,7 @@ import { api, recenti, dimentica, ricorda } from './api.js';
 import { esc, attr, chip, toast, copia, condividi, scarica, caricaScript, testoSu, COLORI } from './ui.js';
 import { icona, ICONE as DISEGNI, SCENE } from './disegni.js';
 import { normalizza, nuovoId } from '../core/modello.js';
-import { tuttiGliAvvisi, agenda, prossime, prossimaScadenza, segnaFatto, riassunto, settimanaDi, nomiVoci } from '../core/motore.js';
+import { tuttiGliAvvisi, agenda, prossime, segnaFatto, riassunto, settimanaDi, nomiVoci, eScadenza, giaFatta, scadenzaAttuale } from '../core/motore.js';
 import { generaICS } from '../core/ics.js';
 import { MODELLI, VOCI_AUTO, creaAuto, primaRevisione } from '../core/modelli.js';
 import { piuGiorni, piuMesi, differenza, lunediDi, fmt, fmtAnno, fmtGiorno, fmtLungo, GIORNI, valida } from '../core/date.js';
@@ -107,58 +107,48 @@ export function vistaOggi() {
   h += avDomani.length ? avDomani.map(avvisoHTML).join('') : '<p class="muted">Nessun avviso.</p>';
   h += '</section>';
 
-  h += vistaScadenze(t);
-
-  // i prossimi 10 promemoria da domani in poi (anche lontani, come le scadenze), raggruppati per giorno
-  const prossimi = d.promemoria.flatMap((p) => prossime(p, piuGiorni(t, 1), 10, 800).map((o) => ({ p, o })))
+  // i prossimi 10 promemoria da domani in poi; in cima le scadenze già arrivate e non ancora fatte
+  const attuali = new Map(d.promemoria.map((p) => [p.id, scadenzaAttuale(p, t)]));
+  const arretrate = d.promemoria.filter((p) => attuali.get(p.id) && attuali.get(p.id).data <= t)
+    .map((p) => ({ p, o: attuali.get(p.id) })).sort((a, b) => a.o.data.localeCompare(b.o.data));
+  const prossimi = d.promemoria.flatMap((p) => prossime(p, piuGiorni(t, 1), 10, 800).filter((o) => !giaFatta(p, o.data)).map((o) => ({ p, o })))
     .sort((a, b) => a.o.data.localeCompare(b.o.data)).slice(0, 10);
   const perGiorno = [];
-  for (const x of prossimi) {
+  for (const x of [...arretrate, ...prossimi]) {
     const g = perGiorno.at(-1);
     if (g && g.data === x.o.data) g.voci.push(x); else perGiorno.push({ data: x.o.data, voci: [x] });
   }
-  const traQuanto = (data) => { const n = differenza(t, data); return n === 1 ? 'domani' : n <= 60 ? 'tra ' + n + ' giorni' : 'nel ' + data.slice(0, 4); };
+  const traQuanto = (data) => { const n = differenza(t, data); return n < 0 ? (-n === 1 ? 'ieri' : (-n) + ' giorni fa') : n === 0 ? 'oggi' : n === 1 ? 'domani' : n <= 60 ? 'tra ' + n + ' giorni' : 'nel ' + data.slice(0, 4); };
   h += '<section class="card"><h2>I prossimi promemoria</h2>';
   if (!perGiorno.length) h += '<p class="muted">Niente in programma.</p>';
   else {
     h += '<div class="list">' + perGiorno.map((g) => '<div class="item"><div class="d">' + esc(fmtGiorno(g.data)) + '<span>' + esc(traQuanto(g.data)) + '</span></div><div>' +
-      g.voci.map(({ p, o }) => occorrenzaHTML(p, o)).join('') + '</div></div>').join('') + '</div>';
+      g.voci.map(({ p, o }) => prossimoHTML(p, o, t, attuali.get(p.id))).join('') + '</div></div>').join('') + '</div>';
   }
   h += '</section>';
   return h;
 }
 
-function badgeScadenza(t, s) {
-  const n = differenza(t, s);
-  if (n < 0) return '<span class="badge rosso">Scaduta da ' + (-n) + (n === -1 ? ' giorno' : ' giorni') + '</span>';
-  if (n === 0) return '<span class="badge rosso">Scade oggi</span>';
-  const testo = n === 1 ? 'Domani' : n <= 60 ? 'Tra ' + n + ' giorni' : fmtAnno(s);
-  return '<span class="badge ' + (n <= 7 ? 'rosso' : n <= 30 ? 'giallo' : n <= 60 ? 'verde' : 'grigio') + '">' + testo + '</span>';
+/** Scritta rossa delle scadenze: "Scadenza", "Scade oggi", "Scaduta da 3 giorni". */
+function etichettaScadenza(o, t) {
+  if (!o) return '<span class="etichetta-scadenza">Scadenza</span>';
+  const n = differenza(o.data, t);
+  return '<span class="etichetta-scadenza">' + (n > 0 ? 'Scaduta da ' + (n === 1 ? '1 giorno' : n + ' giorni') : n === 0 ? 'Scade oggi' : 'Scadenza') + '</span>';
 }
 
-function vistaScadenze(t) {
-  const lista = S.dati.promemoria.filter((p) => p.quando.tipo === 'scadenza' && !p.pausa)
-    .sort((a, b) => a.quando.scadenza.localeCompare(b.quando.scadenza));
-  if (!lista.length) return '';
-  let h = '<section class="card"><h2>Scadenze</h2>';
-  for (const p of lista) {
-    const q = p.quando;
-    h += '<div class="scadenza">' + icona(iconaDi(p), 'medio') + '<div class="info"><div class="titolo">' + esc(p.titolo) + '</div>' +
-      '<div class="small muted">Scade ' + esc(fmtAnno(q.scadenza)) + (q.ultimaVolta ? ' · fatto l\'ultima volta il ' + esc(fmtAnno(q.ultimaVolta)) : '') + '</div></div>' +
-      badgeScadenza(t, q.scadenza) +
-      (puoModificare() && S.ui.fatto !== p.id ? '<button class="btn piccolo" data-act="fatto-apri" data-id="' + esc(p.id) + '">Fatto</button>' : '');
-    if (S.ui.fatto === p.id) {
-      const il = S.ui.fattoIl || t;
-      const prossima = S.ui.fattoProssima || prossimaScadenza(q, il) || '';
-      h += '<div class="pannello"><div class="row end">' +
-        '<label class="field">Quando l\'hai fatto?<input type="date" data-bind="fatto-il" value="' + esc(il) + '" max="' + esc(t) + '"></label>' +
-        '<label class="field">Prossima scadenza<input type="date" data-bind="fatto-prossima" value="' + esc(prossima) + '"></label></div>' +
-        (q.ripeti ? '<p class="small muted" style="margin:8px 0 0">Calcolata da sola: controllala sul documento (per esempio sul libretto o sulla polizza).</p>' : '<p class="small muted" style="margin:8px 0 0">Indica la prossima scadenza, se c\'è.</p>') +
-        '<div class="row" style="margin-top:10px"><button class="btn primary" data-act="fatto-conferma">Conferma</button><button class="btn ghost" data-act="fatto-annulla">Annulla</button></div></div>';
-    }
-    h += '</div>';
+/** Una voce di "I prossimi promemoria": scritta rossa e pulsante "Fatto" se è una scadenza. */
+function prossimoHTML(p, o, t, attuale) {
+  if (!eScadenza(p)) return '<div class="prossimo">' + occorrenzaHTML(p, o) + '</div>';
+  const eAttuale = attuale && attuale.data === o.data;
+  let h = '<div class="prossimo scadenza-voce"><div class="prossimo-testa">' + occorrenzaHTML(p, o) + etichettaScadenza(eAttuale ? o : null, t) + '</div>';
+  if (eAttuale && puoModificare()) {
+    const chiave = p.id + '|' + o.data;
+    if (S.ui.fatto === chiave) {
+      h += '<div class="pannello">Segnare <b>' + esc(p.titolo) + '</b> del ' + esc(fmtAnno(o.data)) + ' come fatto?' +
+        '<div class="row" style="margin-top:10px"><button class="btn primary" data-act="fatto-conferma">Sì, fatto</button><button class="btn ghost" data-act="fatto-annulla">Annulla</button></div></div>';
+    } else h += '<button class="btn piccolo bottone-fatto" data-act="fatto-apri" data-id="' + esc(p.id) + '" data-data="' + o.data + '">Fatto</button>';
   }
-  return h + '</section>';
+  return h + '</div>';
 }
 
 /* ---------- elenco promemoria ---------- */
@@ -175,9 +165,12 @@ export function vistaPromemoria() {
       let extra = '';
       if (p.pausa) extra = 'In pausa';
       else if (p.quando.tipo === 'rotazione' && p.quando.settimane.length > 1) extra = 'Questa settimana: ' + p.quando.settimane[settimanaDi(p.quando, t)].nome;
-      if (!p.pausa && pr && p.quando.tipo !== 'scadenza') extra += (extra ? ' · ' : '') + 'Prossima volta: ' + fmtGiorno(pr.data) + (pr.voci.length ? ' (' + nomiVoci(p, pr.voci).join(', ') + ')' : '');
+      const att = scadenzaAttuale(p, t);
+      const prossima = eScadenza(p) ? att : pr;
+      if (!p.pausa && eScadenza(p) && !att) extra += (extra ? ' · ' : '') + 'Fatto';
+      if (!p.pausa && prossima) extra += (extra ? ' · ' : '') + (eScadenza(p) ? (prossima.data <= t ? 'Da fare: ' : 'Prossima scadenza: ') : 'Prossima volta: ') + fmtGiorno(prossima.data) + (prossima.data.slice(0, 4) !== t.slice(0, 4) ? ' ' + prossima.data.slice(0, 4) : '') + (prossima.voci.length ? ' (' + nomiVoci(p, prossima.voci).join(', ') + ')' : '');
       h += '<a class="prom' + (p.pausa ? ' pausa' : '') + '" href="#modifica/' + esc(p.id) + '">' + icona(iconaDi(p), 'medio') + '<span class="corpo">' +
-        '<span class="titolo">' + esc(p.titolo) + '</span><br><span class="descr">' + esc(riassunto(p)) + '</span>' +
+        '<span class="prom-testa"><span class="titolo">' + esc(p.titolo) + '</span>' + (eScadenza(p) && !p.pausa ? etichettaScadenza(att, t) : '') + '</span><span class="descr">' + esc(riassunto(p)) + '</span>' +
         (extra ? '<br><span class="descr"><b>' + esc(extra) + '</b></span>' : '') + '</span></a>';
     }
   }
@@ -528,15 +521,16 @@ export const AZIONI = {
   'condividi'(el) { condividi(S.dati?.nome || 'Promemoria', 'I promemoria di "' + (S.dati?.nome || '') + '":', el.dataset.url); },
   'stampa'() { window.print(); },
 
-  'fatto-apri'(el) { S.ui.fatto = el.dataset.id; S.ui.fattoIl = oggi(); S.ui.fattoProssima = null; render(); },
+  'fatto-apri'(el) { S.ui.fatto = el.dataset.id + '|' + el.dataset.data; render(); },
   'fatto-annulla'() { S.ui.fatto = null; render(); },
   'fatto-conferma'() {
-    const id = S.ui.fatto, il = S.ui.fattoIl || oggi();
-    const p = S.dati.promemoria.find((x) => x.id === id);
-    const prossima = S.ui.fattoProssima || prossimaScadenza(p.quando, il);
+    const [id, data] = (S.ui.fatto || '').split('|');
     S.ui.fatto = null;
-    modifica((d) => { const i = d.promemoria.findIndex((x) => x.id === id); d.promemoria[i] = segnaFatto(d.promemoria[i], il, valida(prossima) ? prossima : null); }, { subito: true });
-    toast(valida(prossima) && prossima !== p.quando.scadenza ? 'Bravo! Prossima scadenza: ' + fmtAnno(prossima) : 'Segnato come fatto.');
+    if (!id || !valida(data)) return;
+    modifica((d) => { const i = d.promemoria.findIndex((x) => x.id === id); if (i >= 0) d.promemoria[i] = segnaFatto(d.promemoria[i], data); }, { subito: true });
+    const p = S.dati.promemoria.find((x) => x.id === id);
+    const poi = p && scadenzaAttuale(p, oggi());
+    toast('Segnato come fatto.' + (poi ? ' Prossima scadenza: ' + fmtAnno(poi.data) + '.' : ''));
   },
 
   'usa-modello'(el) {
@@ -704,12 +698,6 @@ export const AZIONI = {
 };
 
 export const LEGAMI = {
-  'fatto-il'(el) {
-    S.ui.fattoIl = valida(el.value) ? el.value : oggi();
-    S.ui.fattoProssima = null;
-    return true;
-  },
-  'fatto-prossima'(el) { S.ui.fattoProssima = el.value; },
   'email-oggetto'(el) { S.ui.email.bozza.oggetto = el.value; },
   'email-corpo'(el) { S.ui.email.bozza.corpo = el.value; },
   'schema-settimane'(el) { S.ui.settimane = +el.value; return true; },

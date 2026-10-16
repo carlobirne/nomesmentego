@@ -2,7 +2,7 @@
 // Puro: niente DOM, niente rete. Lo usano interfaccia, feed calendario e test.
 import {
   GIORNI, GIORNI_NOMI, MESI_NOMI, giornoSettimana, lunediDi, differenza, piuGiorni, piu, parti,
-  giorniNelMese, componi, fineMese, fmt, fmtAnno, relativo,
+  giorniNelMese, componi, fmt, fmtAnno, relativo,
 } from './date.js';
 
 /* ---------- regola di base, senza eccezioni ---------- */
@@ -61,10 +61,9 @@ export function base(p, d) {
     case 'annuale': {
       const [y, m, g] = parti(d);
       if (m !== q.mese) return null;
+      if (q.ogni > 1) { const y0 = parti(q.inizio)[0]; if (y < y0 || (y - y0) % q.ogni !== 0) return null; }
       return g === Math.min(q.giorno, giorniNelMese(y, m)) ? [] : null;
     }
-    case 'scadenza':
-      return q.scadenza === d ? [] : null;
   }
   return null;
 }
@@ -116,9 +115,8 @@ export function occorrenze(p, da, a, { annullate = false } = {}) {
   const out = [];
   const q = p.quando;
   // scorciatoie per i tipi con una sola data nota
-  if ((q.tipo === 'una-volta' || q.tipo === 'scadenza') && !p.eccezioni.length) {
-    const d = q.tipo === 'scadenza' ? q.scadenza : q.data;
-    return d >= da && d <= a ? [{ data: d, voci: [], note: [], cambiata: false }] : [];
+  if (q.tipo === 'una-volta' && !p.eccezioni.length) {
+    return q.data >= da && q.data <= a ? [{ data: q.data, voci: [], note: [], cambiata: false }] : [];
   }
   const n = differenza(da, a);
   for (let i = 0; i <= n; i++) {
@@ -141,7 +139,10 @@ export function prossime(p, da, quante = 1, orizzonte = 800) {
 /* ---------- avvisi ---------- */
 
 const MAX_PRIMA = { giorni: 1, settimane: 7, mesi: 31 };
-const INSISTI_OGNI = 3, INSISTI_PER = 30;
+const INSISTI_MAX = 365; // una scadenza dimenticata si ricorda al massimo per un anno
+export const eScadenza = (p) => !!p.scadenza?.attiva;
+/** Data già segnata come fatta (o precedente all'attivazione della scadenza). */
+export const giaFatta = (p, data) => eScadenza(p) && !!p.scadenza.fattoFino && data <= p.scadenza.fattoFino;
 
 export const nomiVoci = (p, ids) => (ids || []).map((id) => p.voci.find((v) => v.id === id)?.nome).filter(Boolean);
 
@@ -164,30 +165,37 @@ function testoAvviso(p, a, o, quando) {
  * Ognuno: { id, promemoria, data (quando scatta), ora, occorrenza, testo, scaduto }
  */
 export function avvisi(p, da, a) {
-  if (p.pausa || !p.avvisi.length) return [];
-  const anticipo = Math.max(...p.avvisi.map((x) => x.prima * MAX_PRIMA[x.unita]));
-  const occ = occorrenze(p, da, piuGiorni(a, anticipo));
+  if (p.pausa) return [];
   const out = [];
+  const anticipo = p.avvisi.length ? Math.max(...p.avvisi.map((x) => x.prima * MAX_PRIMA[x.unita])) : 0;
+  const occ = p.avvisi.length ? occorrenze(p, da, piuGiorni(a, anticipo)) : [];
   for (const o of occ) {
+    if (giaFatta(p, o.data)) continue; // scadenza già fatta (anche in anticipo): niente più avvisi
     p.avvisi.forEach((x, i) => {
       const quando = piu(o.data, -x.prima, x.unita);
       if (quando < da || quando > a) return;
       out.push({ id: p.id + '-' + o.data + '-' + i, promemoria: p.id, data: quando, ora: x.ora, occorrenza: o, testo: testoAvviso(p, x, o, quando), scaduto: false });
     });
   }
-  // scadenza non segnata come "Fatto": ricorda ogni 3 giorni per un mese
-  if (p.insisti && p.quando.tipo === 'scadenza') {
-    const s = p.quando.scadenza;
-    const ora = p.avvisi[p.avvisi.length - 1].ora;
-    for (let k = INSISTI_OGNI; k <= INSISTI_PER; k += INSISTI_OGNI) {
-      const quando = piuGiorni(s, k);
-      if (quando < da || quando > a) continue;
-      out.push({
-        id: p.id + '-' + s + '-insisti-' + k, promemoria: p.id, data: quando, ora,
-        occorrenza: { data: s, voci: [], note: [], cambiata: false },
-        testo: 'Scaduto da ' + k + ' giorni: ' + p.titolo + ' (segna "Fatto" nell\'app)', scaduto: true,
-      });
-    }
+  // scadenza passata senza "Fatto": un avviso ogni N giorni finché non lo si preme
+  // (o finché non arriva la data successiva, che diventa la nuova scadenza)
+  if (eScadenza(p)) {
+    const n = p.scadenza.ogni;
+    const ora = p.avvisi.length ? p.avvisi[p.avvisi.length - 1].ora : '09:00';
+    const passate = occorrenze(p, piuGiorni(da, -INSISTI_MAX), a).filter((o) => !giaFatta(p, o.data));
+    passate.forEach((o, i) => {
+      const dopo = passate[i + 1]?.data ?? prossime(p, piuGiorni(o.data, 1), 1, 400)[0]?.data;
+      for (let k = n; k <= INSISTI_MAX; k += n) {
+        const quando = piuGiorni(o.data, k);
+        if (quando > a || (dopo && quando >= dopo)) break;
+        if (quando < da) continue;
+        out.push({
+          id: p.id + '-' + o.data + '-scaduto-' + k, promemoria: p.id, data: quando, ora, occorrenza: o,
+          testo: 'Scaduto da ' + (k === 1 ? '1 giorno' : k + ' giorni') + ': ' + p.titolo + (o.voci.length ? ': ' + nomiVoci(p, o.voci).join(', ') : '') + ' (segna "Fatto")',
+          scaduto: true,
+        });
+      }
+    });
   }
   return out.sort((x, y) => (x.data + x.ora).localeCompare(y.data + y.ora));
 }
@@ -211,20 +219,30 @@ export function agenda(bacheca, da, a) {
 
 /* ---------- scadenze ---------- */
 
-/** Prossima scadenza proposta quando si preme "Fatto" in data `fattoIl`. */
-export function prossimaScadenza(q, fattoIl) {
-  if (q.tipo !== 'scadenza' || !q.ripeti) return null;
-  const { ogni, unita, da, fineMese: fm } = q.ripeti;
-  let d = piu(da === 'scadenza' ? q.scadenza : fattoIl, ogni, unita);
-  if (da === 'scadenza') while (d <= fattoIl) d = piu(d, ogni, unita); // se era scaduta da più cicli
-  return fm ? fineMese(d) : d;
+/**
+ * La data "da fare" di una scadenza: la più recente già arrivata e non segnata come fatta
+ * (scaduta, o che scade oggi); se non ce n'è, la prossima. null se non è una scadenza.
+ * "Fatto" su questa data vale anche per quelle precedenti.
+ */
+export function scadenzaAttuale(p, oggiISO) {
+  if (!eScadenza(p) || p.pausa) return null;
+  const fino = p.scadenza.fattoFino, limite = piuGiorni(oggiISO, -INSISTI_MAX);
+  const da = fino && fino >= limite ? piuGiorni(fino, 1) : limite;
+  const arrivate = da <= oggiISO ? occorrenze(p, da, oggiISO) : [];
+  if (arrivate.length) return arrivate[arrivate.length - 1];
+  const domani = piuGiorni(oggiISO, 1);
+  return prossime(p, fino && fino >= domani ? piuGiorni(fino, 1) : domani, 1, 1200)[0] ?? null;
 }
 
-/** Restituisce il promemoria aggiornato dopo "Fatto" (senza modificarlo). */
-export function segnaFatto(p, fattoIl, nuovaScadenza = prossimaScadenza(p.quando, fattoIl)) {
-  if (p.quando.tipo !== 'scadenza') return p;
-  return { ...p, quando: { ...p.quando, ultimaVolta: fattoIl, scadenza: nuovaScadenza || p.quando.scadenza } };
+/** Restituisce il promemoria con la data `data` (e le precedenti) segnata come fatta. */
+export function segnaFatto(p, data) {
+  if (!eScadenza(p)) return p;
+  const fino = p.scadenza.fattoFino && p.scadenza.fattoFino > data ? p.scadenza.fattoFino : data;
+  return { ...p, scadenza: { ...p.scadenza, fattoFino: fino } };
 }
+
+/** "ogni giorno" / "ogni 3 giorni" */
+export const ogniGiorni = (n) => (n === 1 ? 'ogni giorno' : 'ogni ' + n + ' giorni');
 
 /* ---------- descrizioni in italiano ---------- */
 
@@ -251,12 +269,9 @@ export function descriviQuando(p) {
       if (q.modo === 'giorno') return ogni + (q.giorno === -1 ? ", l'ultimo giorno" : ', il giorno ' + q.giorno);
       return ogni + ", l'" + ORDINALI[q.n] + ' ' + GIORNI_NOMI[GIORNI.indexOf(q.giornoSett)];
     }
-    case 'annuale': return 'Ogni anno, il ' + q.giorno + ' ' + MESI_NOMI[q.mese - 1];
-    case 'scadenza': {
-      let s = 'Scade ' + GIORNI_NOMI[giornoSettimana(q.scadenza)] + ' ' + fmtAnno(q.scadenza);
-      if (q.ripeti) s += ', poi ogni ' + quantita(q.ripeti.ogni, q.ripeti.unita);
-      return s;
-    }
+    case 'annuale':
+      return (q.ogni === 1 ? 'Ogni anno' : 'Ogni ' + q.ogni + ' anni') + ', il ' + q.giorno + ' ' + MESI_NOMI[q.mese - 1] +
+        (q.ogni > 1 ? ' (dal ' + parti(q.inizio)[0] + ')' : '');
   }
   return '';
 }
@@ -272,5 +287,6 @@ export function descriviAvviso(a) {
 /** Frase completa: "Ogni martedì. Ti avviso la sera prima alle 19:00." */
 export function riassunto(p) {
   const av = p.avvisi.length ? 'Ti avviso ' + elenco(p.avvisi.map(descriviAvviso)) + '.' : 'Nessun avviso: lo vedi solo nell\'app e nel calendario.';
-  return descriviQuando(p) + '. ' + av;
+  const sc = eScadenza(p) ? ' È una scadenza: se passa senza "Fatto", ti avviso ' + ogniGiorni(p.scadenza.ogni) + ' finché non lo premi.' : '';
+  return descriviQuando(p) + '. ' + av + sc;
 }

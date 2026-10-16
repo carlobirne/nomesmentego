@@ -14,9 +14,8 @@ gruppi:
   - { id: puma,   nome: Puma,   icona: auto, colore: "#22579a" }
   - { id: passat, nome: Passat, icona: auto, colore: "#3e7d3a" }
 
-# Ogni scadenza: avviso 20 giorni prima (come nel foglio), 7 giorni prima e il giorno stesso;
-# se passa senza "Fatto" ricorda ogni 3 giorni. "da": la prossima scadenza si conta
-# da quando lo fai (fatto) o dalla scadenza precedente (scadenza).
+# Ogni promemoria: avviso 20 giorni prima (come nel foglio), 7 giorni prima e il giorno stesso.
+# È segnato come "scadenza": se la data passa senza "Fatto", ricorda ogni 3 giorni.
 avvisiAuto: &avvisi
   - { prima: 20, unita: giorni, ora: "09:00" }
   - { prima: 7, unita: giorni, ora: "09:00" }
@@ -27,65 +26,65 @@ promemoria:
   - id: revisione-puma
     gruppo: puma
     titolo: Revisione Puma
-    quando: { tipo: scadenza, scadenza: "2028-08-31", ultimaVolta: "2026-08-26", ripeti: { ogni: 2, unita: anni, da: fatto, fineMese: true } }
+    quando: { tipo: annuale, mese: 8, giorno: 31, ogni: 2, inizio: "2028-08-31" }
     avvisi: *avvisi
-    insisti: true
+    scadenza: { attiva: true, ogni: 3 }
   - id: bollo-puma
     gruppo: puma
     titolo: Bollo Puma
-    quando: { tipo: scadenza, scadenza: "2027-04-30", ultimaVolta: "2026-01-02", ripeti: { ogni: 1, unita: anni, da: scadenza } }
+    quando: { tipo: annuale, mese: 4, giorno: 30, inizio: "2027-04-30" }
     avvisi: *avvisi
-    insisti: true
+    scadenza: { attiva: true, ogni: 3 }
   - id: assicurazione-puma
     gruppo: puma
     titolo: Assicurazione Puma
-    quando: { tipo: scadenza, scadenza: "2027-02-25", ultimaVolta: "2026-02-20", ripeti: { ogni: 1, unita: anni, da: scadenza } }
+    quando: { tipo: annuale, mese: 2, giorno: 25, inizio: "2027-02-25" }
     avvisi: *avvisi
-    insisti: true
+    scadenza: { attiva: true, ogni: 3 }
   - id: tagliando-puma
     gruppo: puma
     titolo: Tagliando Puma
     nota: "Entro 25.000 km o 2 anni (varia a seconda dell'auto)."
-    quando: { tipo: scadenza, scadenza: "2027-10-15", ultimaVolta: "2026-01-12", ripeti: { ogni: 2, unita: anni, da: fatto } }
+    quando: { tipo: annuale, mese: 10, giorno: 15, ogni: 2, inizio: "2027-10-15" }
     avvisi: *avvisi
-    insisti: true
+    scadenza: { attiva: true, ogni: 3 }
   - id: gomme-puma
     gruppo: puma
     titolo: Cambio gomme Puma
     nota: "Estive/invernali. Chiedere lo stato delle gomme, se da cambiare."
-    quando: { tipo: scadenza, scadenza: "2026-11-20", ultimaVolta: "2026-05-20", ripeti: { ogni: 6, unita: mesi, da: scadenza } }
+    quando: { tipo: mensile, modo: giorno, giorno: 20, ogni: 6, inizio: "2026-11-20" }
     avvisi: *avvisi
-    insisti: true
+    scadenza: { attiva: true, ogni: 3 }
   # --- Passat ---
   - id: revisione-passat
     gruppo: passat
     titolo: Revisione Passat
-    quando: { tipo: scadenza, scadenza: "2027-11-30", ultimaVolta: "2026-01-02", ripeti: { ogni: 2, unita: anni, da: fatto, fineMese: true } }
+    quando: { tipo: annuale, mese: 11, giorno: 31, ogni: 2, inizio: "2027-11-30" }
     avvisi: *avvisi
-    insisti: true
+    scadenza: { attiva: true, ogni: 3 }
   - id: bollo-passat
     gruppo: passat
     titolo: Bollo Passat
-    quando: { tipo: scadenza, scadenza: "2027-01-12", ultimaVolta: "2024-01-15", ripeti: { ogni: 1, unita: anni, da: scadenza } }
+    quando: { tipo: annuale, mese: 1, giorno: 12, inizio: "2027-01-12" }
     avvisi: *avvisi
-    insisti: true
+    scadenza: { attiva: true, ogni: 3 }
   - id: assicurazione-passat
     gruppo: passat
     titolo: Assicurazione Passat
-    quando: { tipo: scadenza, scadenza: "2027-09-15", ultimaVolta: "2025-09-15", ripeti: { ogni: 1, unita: anni, da: scadenza } }
+    quando: { tipo: annuale, mese: 9, giorno: 15, inizio: "2027-09-15" }
     avvisi: *avvisi
-    insisti: true
+    scadenza: { attiva: true, ogni: 3 }
   - id: tagliando-passat
     gruppo: passat
     titolo: Tagliando Passat
     nota: "Entro 25.000 km o 2 anni (varia a seconda dell'auto)."
-    quando: { tipo: scadenza, scadenza: "2027-02-15", ultimaVolta: "2024-03-24", ripeti: { ogni: 2, unita: anni, da: fatto } }
+    quando: { tipo: annuale, mese: 2, giorno: 15, ogni: 2, inizio: "2027-02-15" }
     avvisi: *avvisi
-    insisti: true
+    scadenza: { attiva: true, ogni: 3 }
   - id: gomme-passat
     gruppo: passat
     titolo: Gomme 4 stagioni Passat
     nota: "Rotazione ogni 10.000 km, cambio ogni 40.000 km. L'ultima volta sono state scambiate tra davanti e dietro."
-    quando: { tipo: scadenza, scadenza: "2026-11-04", ultimaVolta: "2026-06-03" }
+    quando: { tipo: una-volta, data: "2026-11-04" }
     avvisi: *avvisi
-    insisti: true
+    scadenza: { attiva: true, ogni: 3 }

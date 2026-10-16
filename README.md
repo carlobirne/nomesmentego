@@ -7,7 +7,10 @@ scadenze dell'auto, medicine, compleanni. Si configura dal browser e gli avvisi 
 - Ogni **bacheca** (es. "Casa di mamma") ha un **link segreto**: chi lo apre la vede e la modifica dal browser.
   C'è anche un link di **sola lettura**.
 - Promemoria **una volta**, **ogni giorno**, **ogni settimana**, **a settimane alterne / a rotazione** (con le voci,
-  es. i tipi di rifiuto), **ogni mese**, **ogni anno**, **scadenze** con preavvisi e pulsante **Fatto**.
+  es. i tipi di rifiuto), **ogni mese**, **ogni anno** (o ogni N anni), con i preavvisi che vuoi.
+- Qualunque promemoria può essere segnato come **scadenza**: passata la data ricorda ogni giorno (o ogni N giorni)
+  finché qualcuno non preme **Fatto** (in *Oggi › I prossimi promemoria*, dove le scadenze hanno la scritta rossa,
+  o dal messaggio Telegram).
 - **Giorni speciali**: festività, recuperi, un giorno in più o in meno.
 - **Calendario in abbonamento**: un tocco per aggiungerlo a Calendario di iPhone o Google Calendar; le modifiche
   si aggiornano da sole.
@@ -211,7 +214,7 @@ web/                 l'app, servita così com'è (niente build)
     modello.js         formato della bacheca, normalizzazione, import della vecchia app
     motore.js          regole di ripetizione → occorrenze → avvisi; "Fatto"; frasi in italiano
     ics.js             calendario iCalendar per il feed e il file .ics
-    modelli.js         modelli pronti (spazzatura, auto, scadenze, …)
+    modelli.js         modelli pronti (spazzatura, auto, compleanno, medicina, personalizzato)
   js/                interfaccia (moduli ES, senza framework)
     app.js             avvio, navigazione (#oggi, #promemoria, …), eventi
     stato.js           stato, salvataggio automatico e conflitti
