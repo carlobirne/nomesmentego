@@ -9,7 +9,7 @@ export const TIPI = ['una-volta', 'giornaliero', 'settimanale', 'rotazione', 'me
 export const SCADENZA_OGNI = [1, 2, 3, 4, 5, 7, 10, 14, 30];
 export const UNITA = ['giorni', 'settimane', 'mesi', 'anni'];
 export const AZIONI = ['annulla', 'sposta', 'aggiungi'];
-export const LIMITI = { promemoria: 300, voci: 30, settimane: 12, avvisi: 6, eccezioni: 200, gruppi: 50, persone: 50, testo: 300, nota: 2000 };
+export const LIMITI = { date: 200, promemoria: 300, voci: 30, settimane: 12, avvisi: 6, eccezioni: 200, gruppi: 50, persone: 50, testo: 300, nota: 2000 };
 
 export const nuovoId = (p = '') => p + Math.random().toString(36).slice(2, 10);
 
@@ -39,15 +39,14 @@ const unici = (arr) => [...new Set(arr)];
  * dal formato precedente, quando la scadenza era un tipo a parte.
  */
 export function quandoDaScadenza(data, ripeti) {
-  if (!valida(data)) return { tipo: 'una-volta', data };
-  if (!ripeti || typeof ripeti !== 'object') return { tipo: 'una-volta', data };
+  if (!valida(data) || !ripeti || typeof ripeti !== 'object') return { tipo: 'una-volta', date: [data] };
   const ogni = Math.max(1, Math.round(Number(ripeti.ogni) || 1));
   const [y, m, g] = parti(data);
   const ultimo = g === giorniNelMese(y, m);
   switch (ripeti.unita) {
     case 'giorni': return { tipo: 'giornaliero', ogni, inizio: data };
     case 'settimane': return { tipo: 'giornaliero', ogni: ogni * 7, inizio: data };
-    case 'mesi': return { tipo: 'mensile', modo: 'giorno', giorno: ripeti.fineMese || (ultimo && g >= 28) ? -1 : g, ogni, inizio: data };
+    case 'mesi': return { tipo: 'mensile', modo: 'giorno', giorni: [ripeti.fineMese || (ultimo && g >= 28) ? -1 : g], ogni, inizio: data };
     default: return { tipo: 'annuale', mese: m, giorno: ripeti.fineMese ? 31 : g, ogni, inizio: data };
   }
 }
@@ -59,8 +58,12 @@ function normalizzaQuando(q, oggiISO) {
   const dataO = (v, def) => valida(v) ? v : def;
   const giorni = (v) => unici(lista(v).filter((g) => GIORNI.includes(g)));
   switch (tipo) {
-    case 'una-volta':
-      return { tipo, data: dataO(q.data, oggiISO) };
+    case 'una-volta': {
+      // "Giorni specifici": un elenco di date (prima c'era una data sola, in `data`)
+      let date = unici(lista(q.date).filter(valida)).sort().slice(0, LIMITI.date);
+      if (!date.length) date = [dataO(q.data, oggiISO)];
+      return { tipo, date, data: date[0] }; // `data`: per chi ha ancora l'app vecchia aperta
+    }
     case 'giornaliero':
       return { tipo, ogni: int(q.ogni, 1, 365, 1), inizio: dataO(q.inizio, oggiISO) };
     case 'settimanale':
@@ -83,9 +86,15 @@ function normalizzaQuando(q, oggiISO) {
     case 'mensile': {
       const modo = q.modo === 'settimana' ? 'settimana' : 'giorno';
       const n = [1, 2, 3, 4, -1].includes(Number(q.n)) ? Number(q.n) : 1;
+      // giorni fissi del mese (1..31, -1 = fine mese). Prima ce n'era uno solo, in `giorno`,
+      // e il 31 voleva dire "l'ultimo giorno": ora è "Fine mese".
+      const ok = (g) => g === -1 || (Number.isInteger(g) && g >= 1 && g <= 31);
+      let gg = Array.isArray(q.giorni) ? unici(q.giorni.map(Number).filter(ok)) : [];
+      if (!gg.length) { const g = Number(q.giorno); gg = [g === -1 || g === 31 ? -1 : int(g, 1, 30, 1)]; }
+      gg.sort((a, b) => (a === -1 ? 99 : a) - (b === -1 ? 99 : b));
       return {
-        tipo, modo,
-        giorno: Number(q.giorno) === -1 ? -1 : int(q.giorno, 1, 31, 1),
+        tipo, modo, giorni: gg,
+        giorno: gg[0], // per chi ha ancora l'app vecchia aperta
         n, giornoSett: GIORNI.includes(q.giornoSett) ? q.giornoSett : 'lun',
         ogni: int(q.ogni, 1, 12, 1), inizio: dataO(q.inizio, oggiISO),
       };

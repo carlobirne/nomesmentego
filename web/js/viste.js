@@ -7,7 +7,7 @@ import { normalizza, nuovoId } from '../core/modello.js';
 import { tuttiGliAvvisi, agenda, prossime, segnaFatto, riassunto, settimanaDi, nomiVoci, eScadenza, giaFatta, scadenzaAttuale } from '../core/motore.js';
 import { generaICS } from '../core/ics.js';
 import { MODELLI, VOCI_AUTO, creaAuto, primaRevisione } from '../core/modelli.js';
-import { piuGiorni, piuMesi, differenza, lunediDi, fmt, fmtAnno, fmtGiorno, fmtLungo, GIORNI, valida } from '../core/date.js';
+import { piuGiorni, piuMesi, differenza, lunediDi, fineMese, fmt, fmtAnno, fmtGiorno, fmtLungo, GIORNI, MESI_NOMI, valida } from '../core/date.js';
 
 /* ---------- utilità comuni ---------- */
 export const gruppoDi = (p) => S.dati.gruppi.find((g) => g.id === p.gruppo);
@@ -211,42 +211,113 @@ export function vistaAuto() {
   return h;
 }
 
-/* ---------- schema su N settimane ---------- */
+/* ---------- specchietto: settimane o mesi ---------- */
+const MAX_EV = 3; // in una casella al massimo 3 righe, poi "+N": il giorno completo si vede toccandolo
+
+/** Le righe di un giorno: una per voce (con il suo colore) o una per promemoria. */
+/** Nello specchietto ogni promemoria senza gruppo ha un colore suo, per distinguerli a colpo d'occhio. */
+function coloriSpecchietto(d) {
+  const m = new Map();
+  let i = 0;
+  for (const p of d.promemoria) m.set(p.id, gruppoDi(p)?.colore || COLORI[[1, 0, 3, 6, 5, 8, 9, 7, 2, 4][i++ % 10]]);
+  return m;
+}
+let colSp = new Map();
+
+function righeGiorno(lista) {
+  const out = [];
+  for (const { p, o } of lista) {
+    if (o.voci === null) { out.push({ testo: p.titolo, annullata: true }); continue; }
+    if (o.voci.length) {
+      for (const id of o.voci) { const v = p.voci.find((x) => x.id === id); if (v) out.push({ testo: v.nome, colore: v.colore }); }
+    } else out.push({ testo: p.titolo, colore: colSp.get(p.id) || coloreDi(p) });
+  }
+  return out;
+}
+
+function casellaGiorno(g, lista, t, etichetta) {
+  const righe = righeGiorno(lista);
+  const cls = [g === t ? 'oggi' : g < t ? 'passato' : '', S.ui.giornoSel === g ? 'scelto' : ''].filter(Boolean).join(' ');
+  const ev = (r) => '<span class="ev' + (r.annullata ? ' annullata' : '') + '"' + (r.colore ? ' style="background:' + r.colore + ';color:' + testoSu(r.colore) + '"' : '') + ' title="' + esc(r.testo) + '">' + esc(r.testo) + '</span>';
+  const visibili = righe.length > MAX_EV ? righe.slice(0, MAX_EV - 1) : righe;
+  let h = '<td' + attr({ class: cls || null }) + '>';
+  h += '<button class="giorno-tasto" data-act="giorno-apri" data-g="' + g + '" aria-label="' + esc(fmtLungo(g) + (righe.length ? ': ' + righe.map((r) => r.testo).join(', ') : ': niente')) + '">' +
+    '<span class="num">' + esc(etichetta) + '</span>' + visibili.map(ev).join('') +
+    (righe.length > visibili.length ? '<span class="ev altri">+' + (righe.length - visibili.length) + '</span>' : '') +
+    // in stampa si vede tutto
+    (righe.length > visibili.length ? '<span class="solo-stampa">' + righe.slice(visibili.length).map(ev).join('') + '</span>' : '') +
+    '</button></td>';
+  return h;
+}
+
+/** Il giorno toccato, per intero, sotto il calendario. */
+function dettaglioGiorno(ag, t) {
+  const g = S.ui.giornoSel;
+  if (!g) return '<p class="small muted no-print" style="margin:10px 0 0">Tocca un giorno per vedere tutto quello che succede.</p>';
+  const lista = ag.get(g) || [];
+  let h = '<div class="dettaglio-giorno no-print" aria-live="polite"><div class="row"><b>' + esc(fmtLungo(g)) + (g.slice(0, 4) !== t.slice(0, 4) ? ' ' + g.slice(0, 4) : '') + '</b><span class="spazio"></span>' +
+    '<button class="btn ghost piccolo" data-act="giorno-chiudi">Chiudi</button></div>';
+  h += lista.length ? lista.map(({ p, o }) => o.voci === null
+    ? '<div class="riga-occ annullata">' + icona(iconaDi(p), 'mini') + esc(p.titolo) + (o.note.length ? ' <span class="nota-ecc">' + esc(o.note.join(' · ')) + '</span>' : '') + '</div>'
+    : occorrenzaHTML(p, o)).join('') : '<p class="muted small" style="margin:6px 0 0">Niente in programma.</p>';
+  return h + '</div>';
+}
+
 export function vistaCalendario() {
   const d = S.dati, t = oggi();
-  const n = S.ui.settimane ?? 4;
-  const inizio = lunediDi(t), fine = piuGiorni(inizio, n * 7 - 1);
-  const ag = new Map(agenda(d, inizio, fine).map((g) => [g.data, g.voci]));
+  const modo = S.ui.specchietto === 'mese' ? 'mese' : 'settimane';
   const rot = d.promemoria.find((p) => p.quando.tipo === 'rotazione' && p.quando.settimane.length > 1 && !p.pausa);
-  let h = '<section class="card no-print"><h2>Schema delle prossime settimane</h2><p class="muted small">Utile da stampare e attaccare al frigo.</p><div class="row">' +
-    '<label class="field stretto">Settimane<select data-bind="schema-settimane">' + [2, 4, 6, 8].map((x) => '<option' + (x === n ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></label>' +
-    '<span class="spazio"></span><button class="btn" data-act="stampa">Stampa</button></div></section>';
-  h += '<section class="card"><h2 class="stampa-titolo">' + esc(d.nome) + '</h2><div class="schema-wrap"><table class="schema"><thead><tr>' +
-    GIORNI.map((g) => '<th scope="col">' + g + '</th>').join('') + '</tr></thead><tbody>';
-  for (let w = 0; w < n; w++) {
-    const lun = piuGiorni(inizio, w * 7);
-    if (rot) h += '<tr><td colspan="7" style="height:auto;border:none;padding:8px 2px 2px"><span class="settimana">Settimana del ' + esc(fmt(lun)) + ' · ' + esc(rot.quando.settimane[settimanaDi(rot.quando, lun)].nome) + '</span></td></tr>';
-    h += '<tr>';
-    for (let i = 0; i < 7; i++) {
-      const g = piuGiorni(lun, i);
-      const cls = g === t ? 'oggi' : g < t ? 'passato' : '';
-      h += '<td' + attr({ class: cls || null }) + '><div class="num">' + esc(fmt(g)) + '</div>';
-      for (const { p, o } of ag.get(g) || []) {
-        if (o.voci === null) { h += '<span class="ev annullata">' + esc(p.titolo) + '</span>'; continue; }
-        if (o.voci.length) {
-          h += o.voci.map((id) => { const v = p.voci.find((x) => x.id === id); return v ? '<span class="ev" style="background:' + v.colore + ';color:' + testoSu(v.colore) + '">' + esc(v.nome) + '</span>' : ''; }).join('');
-        } else {
-          const c = coloreDi(p);
-          h += '<span class="ev" style="background:' + c + ';color:' + testoSu(c) + '">' + esc(p.titolo) + '</span>';
-        }
-      }
-      h += '</td>';
-    }
-    h += '</tr>';
+  let h = '<section class="card no-print"><h2>Specchietto</h2><p class="muted small">Tutto quello che succede, giorno per giorno. Utile anche da stampare e attaccare al frigo.</p>' +
+    '<div class="scelte scelte-2" role="group" aria-label="Come vederlo"><button data-act="specchietto" data-v="settimane" aria-pressed="' + (modo === 'settimane') + '">Settimane</button>' +
+    '<button data-act="specchietto" data-v="mese" aria-pressed="' + (modo === 'mese') + '">Mese</button></div><div class="row end" style="margin-top:10px">';
+  if (modo === 'settimane') {
+    const n = S.ui.settimane ?? 4;
+    h += '<label class="field stretto">Settimane<select data-bind="schema-settimane">' + [1, 2, 4, 6, 8].map((x) => '<option' + (x === n ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></label>';
+  } else {
+    const n = S.ui.mesi ?? 1;
+    h += '<label class="field">Quanti mesi<select data-bind="schema-mesi"><option value="1"' + (n === 1 ? ' selected' : '') + '>Questo mese</option><option value="2"' + (n === 2 ? ' selected' : '') + '>Questo e il prossimo</option></select></label>';
   }
-  h += '</tbody></table></div>';
+  h += '<span class="spazio"></span><button class="btn" data-act="stampa">Stampa</button></div></section>';
+
+  colSp = coloriSpecchietto(d);
+  const intestazione = '<thead><tr>' + GIORNI.map((g) => '<th scope="col">' + g + '</th>').join('') + '</tr></thead>';
+  let tabelle = '', ag;
+  if (modo === 'settimane') {
+    const n = S.ui.settimane ?? 4;
+    const inizio = lunediDi(t), fine = piuGiorni(inizio, n * 7 - 1);
+    ag = new Map(agenda(d, inizio, fine).map((g) => [g.data, g.voci]));
+    tabelle += '<table class="schema">' + intestazione + '<tbody>';
+    for (let w = 0; w < n; w++) {
+      const lun = piuGiorni(inizio, w * 7);
+      if (rot) tabelle += '<tr><td colspan="7" class="riga-sett"><span class="settimana">Settimana del ' + esc(fmt(lun)) + ' · ' + esc(rot.quando.settimane[settimanaDi(rot.quando, lun)].nome) + '</span></td></tr>';
+      tabelle += '<tr>' + Array.from({ length: 7 }, (_, i) => { const g = piuGiorni(lun, i); return casellaGiorno(g, ag.get(g) || [], t, fmt(g)); }).join('') + '</tr>';
+    }
+    tabelle += '</tbody></table>';
+  } else {
+    const n = S.ui.mesi ?? 1;
+    const primo = t.slice(0, 8) + '01';
+    const ultimo = fineMese(piuMesi(primo, n - 1));
+    ag = new Map(agenda(d, lunediDi(primo), ultimo).map((g) => [g.data, g.voci]));
+    for (let m = 0; m < n; m++) {
+      const inizioMese = piuMesi(primo, m), fineM = fineMese(inizioMese);
+      const [y, mm] = inizioMese.split('-').map(Number);
+      tabelle += '<h3 class="mese-titolo">' + MESI_NOMI[mm - 1] + ' ' + y + '</h3><table class="schema mese">' + intestazione + '<tbody>';
+      for (let lun = lunediDi(inizioMese); lun <= fineM; lun = piuGiorni(lun, 7)) {
+        tabelle += '<tr>' + Array.from({ length: 7 }, (_, i) => {
+          const g = piuGiorni(lun, i);
+          return g < inizioMese || g > fineM ? '<td class="fuori"></td>' : casellaGiorno(g, ag.get(g) || [], t, String(+g.slice(8)));
+        }).join('') + '</tr>';
+      }
+      tabelle += '</tbody></table>';
+    }
+  }
+  // legenda: i colori e i nomi interi di quello che compare nel periodo
+  const presenti = new Map();
+  for (const lista of ag.values()) for (const r of righeGiorno(lista)) if (!r.annullata && !presenti.has(r.testo)) presenti.set(r.testo, r.colore);
+  const legenda = presenti.size ? '<div class="legenda" aria-label="Legenda">' + [...presenti].map(([n, c]) => '<span><i style="background:' + c + '"></i>' + esc(n) + '</span>').join('') + '</div>' : '';
+  h += '<section class="card"><h2 class="stampa-titolo">' + esc(d.nome) + '</h2><div class="schema-wrap">' + tabelle + '</div>' + legenda + dettaglioGiorno(ag, t);
   const conAvvisoSera = d.promemoria.some((p) => p.avvisi.some((a) => a.prima === 1 && a.unita === 'giorni'));
-  if (conAvvisoSera) h += '<p class="small muted" style="margin:8px 0 0">Nello schema ci sono i giorni in cui le cose succedono (per la spazzatura, il giorno di ritiro: si espone la sera prima).</p>';
+  if (conAvvisoSera) h += '<p class="small muted" style="margin:8px 0 0">Qui ci sono i giorni in cui le cose succedono (per la spazzatura, il giorno di ritiro: si espone la sera prima).</p>';
   return h + '</section>';
 }
 
@@ -520,6 +591,13 @@ export const AZIONI = {
   'copia'(el) { copia(el.dataset.testo); },
   'condividi'(el) { condividi(S.dati?.nome || 'Promemoria', 'I promemoria di "' + (S.dati?.nome || '') + '":', el.dataset.url); },
   'stampa'() { window.print(); },
+  'specchietto'(el) { S.ui.specchietto = el.dataset.v; S.ui.giornoSel = null; render(); },
+  'giorno-apri'(el) {
+    S.ui.giornoSel = S.ui.giornoSel === el.dataset.g ? null : el.dataset.g;
+    render();
+    if (S.ui.giornoSel) document.querySelector('.dettaglio-giorno')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  },
+  'giorno-chiudi'() { S.ui.giornoSel = null; render(); },
 
   'fatto-apri'(el) { S.ui.fatto = el.dataset.id + '|' + el.dataset.data; render(); },
   'fatto-annulla'() { S.ui.fatto = null; render(); },
@@ -701,6 +779,7 @@ export const LEGAMI = {
   'email-oggetto'(el) { S.ui.email.bozza.oggetto = el.value; },
   'email-corpo'(el) { S.ui.email.bozza.corpo = el.value; },
   'schema-settimane'(el) { S.ui.settimane = +el.value; return true; },
+  'schema-mesi'(el) { S.ui.mesi = +el.value; return true; },
   'auto-nome'(el) { S.ui.auto.nome = el.value; },
   'auto-scadenza'(el) { S.ui.auto.scadenze[el.dataset.k] = el.value; return true; },
   'auto-preavviso'(el) { S.ui.auto.preavviso = +el.value; },

@@ -12,8 +12,8 @@ import { GIORNI, GIORNI_NOMI, MESI_NOMI, lunediDi, piuGiorni, fmtGiorno, fmt, va
 const GIORNI_SPECIALI = false;
 
 const TIPI = [
-  ['una-volta', 'Una volta'], ['giornaliero', 'Ogni giorno'], ['settimanale', 'Ogni settimana'],
-  ['rotazione', 'Settimane a rotazione'], ['mensile', 'Ogni mese'], ['annuale', 'Ogni anno'],
+  ['una-volta', 'Giorni specifici'], ['giornaliero', 'Ogni giorno'], ['settimanale', 'Ogni settimana'],
+  ['rotazione', 'Settimane con voci'], ['mensile', 'Ogni mese'], ['annuale', 'Ogni anno'],
 ];
 const PRESET_AVVISI = [
   ['0-giorni', 'Il giorno stesso'], ['1-giorni', 'Il giorno prima'], ['2-giorni', '2 giorni prima'], ['3-giorni', '3 giorni prima'],
@@ -46,7 +46,7 @@ function riassuntoHTML() {
   const p = S.bozza;
   const prox = prossime(p, oggi(), 3);
   return '<div>' + esc(riassunto(p)) + '</div>' +
-    (prox.length ? '<div class="small" style="margin-top:6px;font-weight:400">Prossime date: ' + prox.map((o) => esc(fmtGiorno(o.data)) + (o.voci.length ? ' (' + esc(nomiVoci(p, o.voci).join(', ')) + ')' : '')).join(' · ') + '</div>'
+    (prox.length ? '<div class="small" style="margin-top:6px;font-weight:400">Prossime date: ' + prox.map((o) => esc(fmtGiorno(o.data) + (o.data.slice(0, 4) !== oggi().slice(0, 4) ? ' ' + o.data.slice(0, 4) : '')) + (o.voci.length ? ' (' + esc(nomiVoci(p, o.voci).join(', ')) + ')' : '')).join(' · ') + '</div>'
       : '<div class="small" style="margin-top:6px;font-weight:400">Nessuna data in arrivo con queste impostazioni.</div>');
 }
 
@@ -86,7 +86,10 @@ function editorQuando(p) {
   const q = p.quando;
   switch (q.tipo) {
     case 'una-volta':
-      return '<label class="field">Giorno<input type="date" data-bind="q-data" value="' + q.data + '"></label>';
+      return '<p class="muted small" style="margin-top:0">Scegli le date una per una: puoi aggiungerne quante vuoi.</p>' +
+        q.date.map((d, i) => '<div class="riga-ed compatta"><input type="date" data-bind="q-data" data-i="' + i + '" value="' + d + '" aria-label="Data ' + (i + 1) + '" style="flex:1 1 160px;width:auto">' +
+          (q.date.length > 1 ? '<button class="btn danger piccolo" data-act="ed-data-del" data-i="' + i + '">Togli</button>' : '') + '</div>').join('') +
+        '<button class="btn piccolo" data-act="ed-data-add" style="margin-top:6px">+ Aggiungi un giorno</button>';
     case 'giornaliero':
       return '<div class="row end"><label class="field stretto">Ogni quanti giorni<select data-bind="q-ogni">' +
         [1, 2, 3, 4, 5, 6, 7, 10, 14, 15, 30].map((n) => '<option value="' + n + '"' + (n === q.ogni ? ' selected' : '') + '>' + (n === 1 ? 'ogni giorno' : 'ogni ' + n + ' giorni') + '</option>').join('') + '</select></label>' +
@@ -100,15 +103,15 @@ function editorQuando(p) {
     case 'rotazione':
       return editorRotazione(p);
     case 'mensile':
-      return '<div class="scelte" role="group" aria-label="Come"><button data-act="ed-mensile-modo" data-v="giorno" aria-pressed="' + (q.modo === 'giorno') + '">Un giorno fisso (es. il 5)</button>' +
-        '<button data-act="ed-mensile-modo" data-v="settimana" aria-pressed="' + (q.modo === 'settimana') + '">Es. il primo lunedì</button></div><div class="row end" style="margin-top:12px">' +
-        (q.modo === 'giorno'
-          ? '<label class="field stretto">Giorno<select data-bind="q-giorno">' + Array.from({ length: 31 }, (_, i) => i + 1).map((n) => '<option value="' + n + '"' + (n === q.giorno ? ' selected' : '') + '>' + n + '</option>').join('') + '<option value="-1"' + (q.giorno === -1 ? ' selected' : '') + '>ultimo giorno</option></select></label>'
+      return '<div class="scelte" role="group" aria-label="Come"><button data-act="ed-mensile-modo" data-v="giorno" aria-pressed="' + (q.modo === 'giorno') + '">Giorni fissi</button>' +
+        '<button data-act="ed-mensile-modo" data-v="settimana" aria-pressed="' + (q.modo === 'settimana') + '">Es. il primo lunedì</button></div>' +
+        (q.modo === 'giorno' ? editorGiorniMese(q) : '') +
+        '<div class="row end" style="margin-top:12px">' +
+        (q.modo === 'giorno' ? ''
           : '<label class="field stretto">Quale<select data-bind="q-n">' + [[1, 'Il primo'], [2, 'Il secondo'], [3, 'Il terzo'], [4, 'Il quarto'], [-1, "L'ultimo"]].map(([n, t]) => '<option value="' + n + '"' + (n === q.n ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label>' +
             '<label class="field stretto">Giorno<select data-bind="q-giornoSett">' + GIORNI.map((g, i) => '<option value="' + g + '"' + (g === q.giornoSett ? ' selected' : '') + '>' + GIORNI_NOMI[i] + '</option>').join('') + '</select></label>') +
         '<label class="field stretto">Ogni<select data-bind="q-ogni">' + [1, 2, 3, 4, 6, 12].map((n) => '<option value="' + n + '"' + (n === q.ogni ? ' selected' : '') + '>' + (n === 1 ? 'mese' : n + ' mesi') + '</option>').join('') + '</select></label>' +
-        (q.ogni > 1 ? '<label class="field">A partire dal<input type="date" data-bind="q-inizio" value="' + q.inizio + '"></label>' : '') + '</div>' +
-        (q.modo === 'giorno' && q.giorno > 28 ? '<p class="small muted" style="margin:8px 0 0">Nei mesi più corti vale l\'ultimo giorno del mese.</p>' : '');
+        (q.ogni > 1 ? '<label class="field">A partire dal<input type="date" data-bind="q-inizio" value="' + q.inizio + '"></label>' : '') + '</div>';
     case 'annuale':
       return '<div class="row end"><label class="field stretto">Giorno<select data-bind="q-giorno">' + Array.from({ length: 31 }, (_, i) => i + 1).map((n) => '<option value="' + n + '"' + (n === q.giorno ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>' +
         '<label class="field">Mese<select data-bind="q-mese">' + MESI_NOMI.map((m, i) => '<option value="' + (i + 1) + '"' + (i + 1 === q.mese ? ' selected' : '') + '>' + m + '</option>').join('') + '</select></label>' +
@@ -117,6 +120,20 @@ function editorQuando(p) {
         (q.giorno > 28 ? '<p class="small muted" style="margin:8px 0 0">Se il mese è più corto vale l\'ultimo giorno del mese.</p>' : '');
   }
   return '';
+}
+
+/** Ogni mese, giorni fissi: 1..31 più "Fine mese", che si adatta alla lunghezza del mese. */
+function editorGiorniMese(q) {
+  const tasto = (g, testo, extra = '') => '<button data-act="ed-mese-giorno" data-v="' + g + '" aria-pressed="' + q.giorni.includes(g) + '"' + extra + '>' + testo + '</button>';
+  let h = '<div class="small" style="font-weight:700;margin:14px 0 6px">Quali giorni del mese?</div><div class="giorni-mese" role="group" aria-label="Giorni del mese">' +
+    Array.from({ length: 31 }, (_, i) => tasto(i + 1, i + 1)).join('') + tasto(-1, 'Fine mese', ' class="fine-mese"') + '</div>';
+  const lunghi = q.giorni.filter((g) => g > 28);
+  if (lunghi.length && !q.giorni.includes(-1)) {
+    h += '<div class="notice small" style="margin-top:10px">Il ' + lunghi.join(', il ') + ' non c\'è in tutti i mesi: in quei mesi l\'avviso non arriva. ' +
+      'Se vuoi l\'ultimo giorno di ogni mese, aggiungi <b>Fine mese</b>: si adatta da solo a mesi di 28, 30 o 31 giorni.' +
+      '<div class="row" style="margin-top:8px"><button class="btn piccolo" data-act="ed-mese-giorno" data-v="-1">+ Aggiungi Fine mese</button></div></div>';
+  }
+  return h;
 }
 
 /** Opzione "Scadenza": vale per qualsiasi ripetizione. */
@@ -136,7 +153,7 @@ function editorRotazione(p) {
   const q = p.quando, t = oggi();
   const sel = Math.min(S.ui.settSel ?? 0, q.settimane.length - 1);
   const w = q.settimane[sel];
-  let h = '<p class="muted small">Per esempio la raccolta porta a porta: settimana A e settimana B che si alternano. Se ti serve, aggiungi <b>voci</b> (i tipi di rifiuto) e scegli quali passano ogni giorno.</p>';
+  let h = '<p class="muted small">Per esempio: 2 settimane che si alternano, settimana A e settimana B. Se ti serve, aggiungi <b>voci</b> (per differenziare gli avvisi) e scegli quali voci associare ai giorni. Se vuoi una sola settimana con le voci, basta togliere l\'altra.</p>';
   // voci
   h += '<details class="altro"' + (p.voci.length ? ' open' : '') + '><summary>Voci (' + p.voci.length + ')</summary>';
   p.voci.forEach((v, i) => {
@@ -172,17 +189,14 @@ function editorRotazione(p) {
 }
 
 function editorAvvisi(p) {
-  let h = '<p class="muted small">Ogni avviso diventa un promemoria sul calendario del telefono, all\'ora che scegli.</p>' +
-    '<div class="chips" style="margin-bottom:8px">' +
-    '<button class="chip" data-act="ed-avv-preset" data-v="1-giorni-20:00">+ La sera prima alle 20</button>' +
-    '<button class="chip" data-act="ed-avv-preset" data-v="0-giorni-08:00">+ La mattina alle 8</button>' +
-    '<button class="chip" data-act="ed-avv-preset" data-v="1-settimane-09:00">+ Una settimana prima</button>' +
-    '<button class="chip" data-act="ed-avv-preset" data-v="1-mesi-09:00">+ Un mese prima</button></div>';
+  let h = '<p class="muted small">Ogni avviso diventa un promemoria sul calendario del telefono, all\'ora che scegli. Puoi impostare anche più orari diversi.</p>';
   if (!p.avvisi.length) h += '<p class="notice small">Nessun avviso: il promemoria si vedrà nell\'app e nel calendario, ma senza notifica.</p>';
+  const voci = p.voci.map((v) => v.nome);
   p.avvisi.forEach((a, i) => {
     const chiave = a.prima + '-' + a.unita;
     const preset = PRESET_AVVISI.some(([v]) => v === chiave);
-    h += '<div class="riga-ed"><label class="field">Quando<select data-bind="avv-quando" data-i="' + i + '">' +
+    h += '<div class="riga-ed avviso-ed">' + (p.avvisi.length > 1 ? '<div class="avviso-n">Avviso ' + (i + 1) + '</div>' : '') +
+      '<label class="field">Quando<select data-bind="avv-quando" data-i="' + i + '">' +
       PRESET_AVVISI.map(([v, t]) => '<option value="' + v + '"' + (v === chiave ? ' selected' : '') + '>' + t + '</option>').join('') +
       (!preset ? '<option value="' + chiave + '" selected>' + a.prima + ' ' + a.unita + ' prima</option>' : '') +
       '<option value="altro">Altro…</option></select></label>' +
@@ -190,9 +204,12 @@ function editorAvvisi(p) {
         '<label class="field stretto">Cosa<select data-bind="avv-unita" data-i="' + i + '">' + ['giorni', 'settimane', 'mesi'].map((u) => '<option' + (u === a.unita ? ' selected' : '') + '>' + u + '</option>').join('') + '</select></label>' : '') +
       '<label class="field stretto">Ora<input type="time" data-bind="avv-ora" data-i="' + i + '" value="' + a.ora + '"></label>' +
       '<button class="btn danger piccolo" data-act="ed-avv-del" data-i="' + i + '" aria-label="Togli questo avviso">Togli</button>' +
-      '<label class="field" style="flex-basis:100%">Testo dell\'avviso <span class="aiuto">(facoltativo: se vuoto uso il nome; puoi scrivere {voci} per i tipi di rifiuto)</span>' +
-      '<input type="text" data-bind="avv-testo" data-i="' + i + '" value="' + esc(a.testo) + '" placeholder="es. Non parcheggiare in piazza stasera" maxlength="140"></label></div>';
+      '<label class="field" style="flex-basis:100%">Testo dell\'avviso <span class="aiuto">' + (i > 0 ? '(facoltativo, come sopra)' :
+        '(facoltativo: se vuoto uso il nome del promemoria; puoi usare le voci definite per questo promemoria scrivendo {voci}' +
+        (voci.length ? ', cioè ' + esc(voci.join(', ')) : '') + '). Es. con le voci Tachipirina e Vitamina D, «Prendi {voci} dopo colazione» diventa «Prendi Tachipirina, Vitamina D dopo colazione».') + '</span>' +
+      '<input type="text" data-bind="avv-testo" data-i="' + i + '" value="' + esc(a.testo) + '" placeholder="' + (voci.length ? 'es. Prendi {voci} dopo colazione' : 'es. Non parcheggiare in piazza stasera') + '" maxlength="140"></label></div>';
   });
+  if (p.avvisi.length < 6) h += '<button class="btn" data-act="ed-avv-add" style="margin-top:8px">+ Aggiungi ' + (p.avvisi.length ? 'un altro avviso' : 'un avviso') + '</button>';
   return h;
 }
 
@@ -229,10 +246,10 @@ export const AZIONI_EDITOR = {
     const prima = p.quando;
     const giorno = prima.data || prima.inizio || oggiISO;
     const base = {
-      'una-volta': { data: giorno }, 'giornaliero': { inizio: oggiISO },
+      'una-volta': { date: [giorno] }, 'giornaliero': { inizio: oggiISO },
       'settimanale': { giorni: prima.tipo === 'rotazione' ? [] : [GIORNI[(new Date().getDay() + 6) % 7]] },
       'rotazione': { inizio: lunediDi(oggiISO), settimane: [{ nome: 'Settimana A', giorni: giorniVuoti() }, { nome: 'Settimana B', giorni: giorniVuoti() }] },
-      'mensile': { modo: 'giorno', giorno: +giorno.slice(8, 10), inizio: oggiISO },
+      'mensile': { modo: 'giorno', giorni: [+giorno.slice(8, 10)], inizio: oggiISO },
       'annuale': { mese: +giorno.slice(5, 7), giorno: +giorno.slice(8, 10), ogni: 1, inizio: giorno },
     }[t];
     p.quando = { tipo: t, ...base };
@@ -274,11 +291,28 @@ export const AZIONI_EDITOR = {
     render();
   },
   'ed-voce-del'(el) { S.bozza.voci.splice(+el.dataset.i, 1); sistema(); render(); },
-  'ed-avv-preset'(el) {
-    const [prima, unita, ora] = el.dataset.v.split('-');
-    if (S.bozza.avvisi.length >= 6) { toast('Al massimo 6 avvisi.'); return; }
-    S.bozza.avvisi.push({ prima: +prima, unita, ora, testo: '' });
-    S.bozza.avvisi.sort((a, b) => b.prima * { giorni: 1, settimane: 7, mesi: 30 }[b.unita] - a.prima * { giorni: 1, settimane: 7, mesi: 30 }[a.unita]);
+  'ed-avv-add'() {
+    const av = S.bozza.avvisi;
+    if (av.length >= 6) { toast('Al massimo 6 avvisi.'); return; }
+    // il primo: il giorno stesso alle 8; i successivi: la sera prima alle 21 (se non c'è già)
+    const c = av.some((a) => a.prima === 0) ? { prima: 1, unita: 'giorni', ora: '21:00' } : { prima: 0, unita: 'giorni', ora: '08:00' };
+    if (av.length && av.some((a) => a.prima === c.prima && a.unita === c.unita)) c.ora = '12:00';
+    av.push({ ...c, testo: '' });
+    S.ui.avvAltro = null;
+    render();
+  },
+  'ed-data-add'() {
+    const q = S.bozza.quando;
+    if (q.date.length >= 200) { toast('Al massimo 200 date.'); return; }
+    const ultima = q.date[q.date.length - 1];
+    q.date.push(piuGiorni(ultima > oggi() ? ultima : oggi(), 1));
+    render();
+  },
+  'ed-data-del'(el) { const q = S.bozza.quando; if (q.date.length > 1) q.date.splice(+el.dataset.i, 1); q.data = q.date[0]; render(); },
+  'ed-mese-giorno'(el) {
+    const q = S.bozza.quando, g = +el.dataset.v;
+    if (q.giorni.includes(g)) { if (q.giorni.length > 1) q.giorni = q.giorni.filter((x) => x !== g); else toast('Serve almeno un giorno.'); } else q.giorni.push(g);
+    q.giorni.sort((a, b) => (a === -1 ? 99 : a) - (b === -1 ? 99 : b));
     render();
   },
   'ed-avv-del'(el) { S.bozza.avvisi.splice(+el.dataset.i, 1); S.ui.avvAltro = null; render(); },
@@ -354,7 +388,12 @@ export const LEGAMI_EDITOR = {
     if (y >= 2000 && y <= 2100) q().inizio = y + q().inizio.slice(4);
     return true;
   },
-  'q-data'(el) { if (valida(el.value)) q().data = el.value; return true; },
+  'q-data'(el) {
+    if (!valida(el.value)) return;
+    q().date[+el.dataset.i] = el.value;
+    q().date = [...new Set(q().date)].sort(); q().data = q().date[0];
+    return true;
+  },
   'q-inizio'(el) { if (valida(el.value)) q().inizio = q().tipo === 'settimanale' ? lunediDi(el.value) : el.value; return true; },
   'q-ogni'(el) { q().ogni = +el.value; return true; },
   'q-giorno'(el) { q().giorno = +el.value; return true; },
