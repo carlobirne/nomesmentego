@@ -259,7 +259,19 @@ Il link di modifica è salvato nel database solo come impronta SHA-256 (vedi *Do
 Il server normalizza ogni bacheca con lo stesso codice dell'app (`web/core/modello.js`), quindi non accetta
 dati malformati.
 
+
 ## Prossimi passi
 
 Idee: tasto "Fatto" anche nelle notifiche dell'app e nelle email, riepilogo settimanale via email,
 calendari comunali della raccolta rifiuti già pronti.
+
+TODO: 
+1. Nella sezione della scelta del quando succede (sezione 2 del setup promemoria) quando seleziono Ogni mese devo poter scegliere non solo Un giorno fisso ma n giorni fissi. Sostituisci quindi la dicitura e togli l'esempio mettendo "giorni fissi" (contemplando il caso che i mesi si fermano al 28 al minimo e quindi se viene selezionato un giorno fisso da 29 a 31 deve essere proposto all'utente di aggiungere il giorno fisso chiamato Fine mese che è sempre l'ultimo giorno del mese e si adatta dinamicamente alla lunghezza dei mesi. Comunque l'utente può scegliere di fregarsene dell'avviso e andare avanti e lasciare dei mesi in cui non riceverà l'avviso se sceglie ad es. 31 (quindi i mesi con 30 giorni non avranno quel giorno di avviso).
+Inoltre Una volta va sostituito da Giorni specifici in cui posso scegliere delle date specifiche (posso sempre aggiungere dei giorni, non limitare la scelta in numero, es 20711/26, 13/3/27,...)
+
+Nelle settimane a rotazione invece metti piuttosto la dicitura Settimane con voci. nel sottotesto "Per esempio la raccolta porta a porta: settimana A e settimana B che si alternano. Se ti serve, aggiungi voci (i tipi di rifiuto) e scegli quali passano ogni giorno." metti invece "Per esempio: 2 settimane che si alternano, settimana A e settimana B. Se ti serve, aggiungi voci (per differenziare gli avvisi) e scegli quali voci associare ai giorni. Se vuoi una settimane con voci basta togliere una settimana.
+
+2. Nella sezione 3 Quando avvisarti, togli i preset già fatti nei rettangolini (La sera prima alle 20, la mattina alle 8, ...) e lascia solo la sezione in cui l'utente sceglie da solo quanto prima e a che ora impostando come default il giorno stesso alle 08:00. Devi però aggiungere la possibilità di associare al promemoria più avvisi in modo che l'utente possa ad es. scegliere: il giorno stesso alle 08:00 e anche la sera prima alle 21:00 ad esempio. Specifica nel sottotesto della sezione: in breve aggiungi a quello già presente "Ogni avviso diventa un promemoria sul calendario del telefono, all'ora che scegli." la frase "Puoi impostare anche più orari diversi." Modifica inoltre nel testo tra parentesi di Testo dell'avviso: scrivi "(facoltativo: se vuoto uso il nome del promemoria puoi usare le voci definite per questo promemoria)." e fai un es. di testo con embeddata un paio voci di medicine.
+
+3. cambia il nome della sezione Schema in Specchietto. aggiungi la possibilità di vedere le settimane come già presente ma anche di poter switchare al mese e dai la possibilità di vedere fino a 2 mesi di calendario (il corrente e il successivo). Inoltre pensa a un una soluzione per vedere comunque bene i promemoria se un giorno è pieno che eviti brutti text wrap nelle caselle promemoria per quel giorno. Non so inventa qualcosa tu 
+
