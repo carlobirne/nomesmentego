@@ -1,7 +1,7 @@
 // Avvisi su Telegram: client delle API, comandi del bot, tasto "Fatto" e giro di invio periodico.
 import { normalizza } from '../web/core/modello.js';
-import { tuttiGliAvvisi, segnaFatto, prossimaScadenza } from '../web/core/motore.js';
-import { oggi, fmtAnno, fmtLungo } from '../web/core/date.js';
+import { tuttiGliAvvisi, segnaFatto, eScadenza, giaFatta, scadenzaAttuale } from '../web/core/motore.js';
+import { oggi, fmtAnno, fmtLungo, valida, piuGiorni } from '../web/core/date.js';
 import { adessoLocale, filtroDi, passaFiltro, avvisiDaMandare, descriviFiltro } from './giro.js';
 
 const API = 'https://api.telegram.org/bot';
@@ -53,12 +53,13 @@ function messaggioAvviso(bacheca, av, iscr) {
   let t = '<b>' + htmlTg(av.testo) + '</b>';
   const sotto = [av.testo.includes(p.titolo) ? '' : p.titolo, gruppo?.nome, bacheca.nome].filter(Boolean);
   t += '\n<i>' + htmlTg([...new Set(sotto)].join(' · ')) + '</i>';
-  if (p.quando.tipo === 'scadenza') t += '\nScade ' + htmlTg(fmtLungo(p.quando.scadenza)) + ' ' + p.quando.scadenza.slice(0, 4);
+  if (eScadenza(p)) t += '\nScadenza: ' + htmlTg(fmtAnno(av.occorrenza.data));
   for (const n of av.occorrenza.note) t += '\n' + htmlTg(n);
   if (p.nota) t += '\n\n' + htmlTg(p.nota.length > 500 ? p.nota.slice(0, 500) + '…' : p.nota);
   const tasti = [];
-  const datiTasto = 'f|' + iscr.bacheca_id + '|' + p.id;
-  if (p.quando.tipo === 'scadenza' && iscr.modifica && datiTasto.length <= 64) tasti.push({ text: 'Fatto', callback_data: datiTasto });
+  // il tasto si porta dietro la data della scadenza: "Fatto" vale per quella
+  const datiTasto = 'f|' + iscr.bacheca_id + '|' + p.id + '|' + av.occorrenza.data.replace(/-/g, '');
+  if (eScadenza(p) && iscr.modifica && datiTasto.length <= 64) tasti.push({ text: 'Fatto', callback_data: datiTasto });
   if (iscr.origine && iscr.token_lettura) tasti.push({ text: 'Apri la bacheca', url: iscr.origine + '/v/' + iscr.token_lettura });
   return { testo: t, tastiera: tasti.length ? [tasti] : null };
 }
@@ -151,7 +152,7 @@ async function comando(msg, { archivio, telegram }) {
 }
 
 async function tastoFatto(q, { archivio, telegram }) {
-  const [tipo, bachecaId, pid] = String(q.data || '').split('|');
+  const [tipo, bachecaId, pid, quando] = String(q.data || '').split('|');
   const chatId = String(q.message?.chat?.id ?? '');
   if (tipo !== 'f' || !bachecaId || !pid) return telegram.rispondiTasto(q.id, 'Tasto non valido.');
   const iscr = (await archivio.iscrizioniDellaChat(chatId)).find((i) => i.bacheca_id === bachecaId);
@@ -161,12 +162,18 @@ async function tastoFatto(q, { archivio, telegram }) {
     if (!riga) return telegram.rispondiTasto(q.id, 'Bacheca non trovata.');
     const b = normalizza(JSON.parse(riga.dati));
     const i = b.promemoria.findIndex((p) => p.id === pid);
-    if (i < 0 || b.promemoria[i].quando.tipo !== 'scadenza') return telegram.rispondiTasto(q.id, 'Promemoria non trovato.');
+    if (i < 0 || !eScadenza(b.promemoria[i])) return telegram.rispondiTasto(q.id, 'Promemoria non trovato.');
     const p = b.promemoria[i];
     const t = oggi(b.fusoOrario);
-    if (p.quando.ultimaVolta === t) return telegram.rispondiTasto(q.id, 'Era già segnato come fatto oggi.');
-    const prossima = prossimaScadenza(p.quando, t);
-    b.promemoria[i] = segnaFatto(p, t, prossima);
+    // tasti vecchi senza data: vale la scadenza in corso, se è vicina (un secondo tocco non segna quella dell'anno dopo)
+    const attuale = scadenzaAttuale(p, t)?.data;
+    const data = /^\d{8}$/.test(quando || '') ? quando.slice(0, 4) + '-' + quando.slice(4, 6) + '-' + quando.slice(6)
+      : attuale && attuale <= piuGiorni(t, 60) ? attuale : p.scadenza.fattoFino;
+    if (!valida(data)) return telegram.rispondiTasto(q.id, 'Promemoria non trovato.');
+    if (giaFatta(p, data)) return telegram.rispondiTasto(q.id, 'Era già segnato come fatto.');
+    b.promemoria[i] = segnaFatto(p, data);
+    const poi = scadenzaAttuale(b.promemoria[i], t);
+    const prossima = poi ? poi.data : null;
     const r = await archivio.aggiorna(bachecaId, riga.versione, JSON.stringify(b), new Date().toISOString());
     if (!r.ok) continue; // qualcuno ha salvato nello stesso istante: riprovo sui dati nuovi
     const chi = q.from?.first_name || 'qualcuno';

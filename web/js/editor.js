@@ -3,13 +3,13 @@
 import { S, modifica, render, oggi } from './stato.js';
 import { esc, toast, testoSu, COLORI } from './ui.js';
 import { sceltaIcone } from './viste.js';
-import { normalizza, nuovoId } from '../core/modello.js';
-import { riassunto, prossime, settimanaDi, descriviQuando, nomiVoci } from '../core/motore.js';
+import { normalizza, nuovoId, SCADENZA_OGNI } from '../core/modello.js';
+import { riassunto, prossime, settimanaDi, descriviQuando, nomiVoci, ogniGiorni } from '../core/motore.js';
 import { GIORNI, GIORNI_NOMI, MESI_NOMI, lunediDi, piuGiorni, fmtGiorno, fmt, valida } from '../core/date.js';
 
 const TIPI = [
   ['una-volta', 'Una volta'], ['giornaliero', 'Ogni giorno'], ['settimanale', 'Ogni settimana'],
-  ['rotazione', 'Settimane a rotazione'], ['mensile', 'Ogni mese'], ['annuale', 'Ogni anno'], ['scadenza', 'Una scadenza'],
+  ['rotazione', 'Settimane a rotazione'], ['mensile', 'Ogni mese'], ['annuale', 'Ogni anno'],
 ];
 const PRESET_AVVISI = [
   ['0-giorni', 'Il giorno stesso'], ['1-giorni', 'Il giorno prima'], ['2-giorni', '2 giorni prima'], ['3-giorni', '3 giorni prima'],
@@ -61,12 +61,12 @@ export function vistaEditor() {
   h += '<section class="card"><div class="passo"><span class="n">2</span><h2>Quando succede</h2></div>' +
     '<div class="scelte" role="group" aria-label="Tipo di ripetizione">' +
     TIPI.map(([t, n]) => '<button data-act="ed-tipo" data-v="' + t + '" aria-pressed="' + (q.tipo === t) + '">' + n + '</button>').join('') + '</div>' +
-    '<div style="margin-top:14px">' + editorQuando(p) + '</div></section>';
+    '<div style="margin-top:14px">' + editorQuando(p) + '</div>' + editorScadenza(p) + '</section>';
 
   h += '<section class="card"><div class="passo"><span class="n">3</span><h2>Quando avvisarti</h2></div>';
   h += editorAvvisi(p) + '</section>';
 
-  if (!['una-volta', 'scadenza'].includes(q.tipo)) h += editorEccezioni(p);
+  if (q.tipo !== 'una-volta') h += editorEccezioni(p);
 
   h += '<section class="card"><div class="riassunto" id="riassunto" aria-live="polite">' + riassuntoHTML() + '</div>';
   if (!S.bozzaNuova) {
@@ -107,26 +107,25 @@ function editorQuando(p) {
         (q.modo === 'giorno' && q.giorno > 28 ? '<p class="small muted" style="margin:8px 0 0">Nei mesi più corti vale l\'ultimo giorno del mese.</p>' : '');
     case 'annuale':
       return '<div class="row end"><label class="field stretto">Giorno<select data-bind="q-giorno">' + Array.from({ length: 31 }, (_, i) => i + 1).map((n) => '<option value="' + n + '"' + (n === q.giorno ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>' +
-        '<label class="field">Mese<select data-bind="q-mese">' + MESI_NOMI.map((m, i) => '<option value="' + (i + 1) + '"' + (i + 1 === q.mese ? ' selected' : '') + '>' + m + '</option>').join('') + '</select></label></div>';
-    case 'scadenza': {
-      const r = q.ripeti;
-      let h = '<div class="row end"><label class="field">Scade il<input type="date" data-bind="q-scadenza" value="' + q.scadenza + '"></label>' +
-        '<label class="field">Fatto l\'ultima volta il <span class="aiuto">(facoltativo)</span><input type="date" data-bind="q-ultimaVolta" value="' + q.ultimaVolta + '"></label></div>' +
-        '<div class="row end" style="margin-top:12px"><label class="field">Si ripete?<select data-bind="q-ripeti">' +
-        [['no', 'No, una volta sola'], ['1-mesi', 'Ogni mese'], ['3-mesi', 'Ogni 3 mesi'], ['6-mesi', 'Ogni 6 mesi'], ['1-anni', 'Ogni anno'], ['2-anni', 'Ogni 2 anni'], ['5-anni', 'Ogni 5 anni'], ['10-anni', 'Ogni 10 anni']]
-          .map(([v, t]) => '<option value="' + v + '"' + ((r ? r.ogni + '-' + r.unita : 'no') === v ? ' selected' : '') + '>' + t + '</option>').join('') +
-        (r && ![1, 3, 6].includes(r.ogni) && r.unita === 'mesi' || r && r.unita !== 'mesi' && r.unita !== 'anni' || r && r.unita === 'anni' && ![1, 2, 5, 10].includes(r.ogni) ? '<option selected>Ogni ' + r.ogni + ' ' + r.unita + '</option>' : '') +
-        '</select></label>';
-      if (r) {
-        h += '<label class="field">La prossima si conta<select data-bind="q-da"><option value="fatto"' + (r.da === 'fatto' ? ' selected' : '') + '>da quando lo fai (revisione, tagliando)</option>' +
-          '<option value="scadenza"' + (r.da === 'scadenza' ? ' selected' : '') + '>dalla scadenza (bollo, assicurazione)</option></select></label></div>' +
-          '<label class="check"><input type="checkbox" data-bind="q-fineMese"' + (r.fineMese ? ' checked' : '') + '> Scade a fine mese (come la revisione)</label>';
-      } else h += '</div>';
-      h += '<label class="check"><input type="checkbox" data-bind="insisti"' + (p.insisti ? ' checked' : '') + '> Se scade e non premo "Fatto", ricordamelo ogni 3 giorni</label>';
-      return h;
-    }
+        '<label class="field">Mese<select data-bind="q-mese">' + MESI_NOMI.map((m, i) => '<option value="' + (i + 1) + '"' + (i + 1 === q.mese ? ' selected' : '') + '>' + m + '</option>').join('') + '</select></label>' +
+        '<label class="field stretto">Ogni<select data-bind="q-ogni">' + [1, 2, 3, 4, 5, 10].map((n) => '<option value="' + n + '"' + (n === q.ogni ? ' selected' : '') + '>' + (n === 1 ? 'anno' : n + ' anni') + '</option>').join('') + '</select></label>' +
+        (q.ogni > 1 ? '<label class="field stretto">A partire dal<input type="number" min="2000" max="2100" data-bind="q-anno" value="' + q.inizio.slice(0, 4) + '"></label>' : '') + '</div>' +
+        (q.giorno > 28 ? '<p class="small muted" style="margin:8px 0 0">Se il mese è più corto vale l\'ultimo giorno del mese.</p>' : '');
   }
   return '';
+}
+
+/** Opzione "Scadenza": vale per qualsiasi ripetizione. */
+function editorScadenza(p) {
+  const s = p.scadenza;
+  return '<div class="scadenza-opzione' + (s.attiva ? ' attiva' : '') + '">' +
+    '<label class="check"><input type="checkbox" data-bind="scadenza-attiva"' + (s.attiva ? ' checked' : '') + '> Scadenza</label>' +
+    '<div class="row" style="gap:8px;margin-top:2px"><span>si riceverà un avviso</span>' +
+    '<select data-bind="scadenza-ogni" aria-label="Ogni quanti giorni"' + (s.attiva ? '' : ' disabled') + ' style="width:auto;min-width:0;flex:0 0 auto">' +
+    SCADENZA_OGNI.map((n) => '<option value="' + n + '"' + (n === s.ogni ? ' selected' : '') + '>' + ogniGiorni(n) + '</option>').join('') + '</select>' +
+    '<span>passata la scadenza finché non si preme <b>Fatto</b>.</span></div>' +
+    (s.attiva ? '<p class="small muted" style="margin:8px 0 0">"Fatto" si preme nella schermata Oggi, accanto al promemoria in "I prossimi promemoria" (o dal messaggio Telegram). Se lo premi in anticipo, gli avvisi di quella data non arrivano più.</p>' : '') +
+    '</div>';
 }
 
 function editorRotazione(p) {
@@ -223,14 +222,13 @@ export const AZIONI_EDITOR = {
     const t = el.dataset.v, p = S.bozza, oggiISO = oggi();
     if (p.quando.tipo === t) return;
     const prima = p.quando;
-    const giorno = prima.data || prima.scadenza || prima.inizio || oggiISO;
+    const giorno = prima.data || prima.inizio || oggiISO;
     const base = {
       'una-volta': { data: giorno }, 'giornaliero': { inizio: oggiISO },
       'settimanale': { giorni: prima.tipo === 'rotazione' ? [] : [GIORNI[(new Date().getDay() + 6) % 7]] },
       'rotazione': { inizio: lunediDi(oggiISO), settimane: [{ nome: 'Settimana A', giorni: giorniVuoti() }, { nome: 'Settimana B', giorni: giorniVuoti() }] },
       'mensile': { modo: 'giorno', giorno: +giorno.slice(8, 10), inizio: oggiISO },
-      'annuale': { mese: +giorno.slice(5, 7), giorno: +giorno.slice(8, 10) },
-      'scadenza': { scadenza: giorno >= oggiISO ? giorno : oggiISO, ripeti: null },
+      'annuale': { mese: +giorno.slice(5, 7), giorno: +giorno.slice(8, 10), ogni: 1, inizio: giorno },
     }[t];
     p.quando = { tipo: t, ...base };
     if (prima.tipo === 'settimanale' && t === 'rotazione') { // porta i giorni già scelti in tutte le settimane
@@ -338,7 +336,19 @@ export const LEGAMI_EDITOR = {
     }
     S.bozza.gruppo = el.value;
   },
-  'insisti'(el) { S.bozza.insisti = el.checked; },
+  'scadenza-attiva'(el) {
+    const s = S.bozza.scadenza;
+    s.attiva = el.checked;
+    // le date già passate non contano: si parte da adesso
+    if (s.attiva) s.fattoFino = piuGiorni(oggi(), -1);
+    return true;
+  },
+  'scadenza-ogni'(el) { S.bozza.scadenza.ogni = +el.value; return true; },
+  'q-anno'(el) {
+    const y = Math.round(+el.value);
+    if (y >= 2000 && y <= 2100) q().inizio = y + q().inizio.slice(4);
+    return true;
+  },
   'q-data'(el) { if (valida(el.value)) q().data = el.value; return true; },
   'q-inizio'(el) { if (valida(el.value)) q().inizio = q().tipo === 'settimanale' ? lunediDi(el.value) : el.value; return true; },
   'q-ogni'(el) { q().ogni = +el.value; return true; },
@@ -346,19 +356,6 @@ export const LEGAMI_EDITOR = {
   'q-n'(el) { q().n = +el.value; return true; },
   'q-giornoSett'(el) { q().giornoSett = el.value; return true; },
   'q-mese'(el) { q().mese = +el.value; return true; },
-  'q-scadenza'(el) { if (valida(el.value)) q().scadenza = el.value; return true; },
-  'q-ultimaVolta'(el) { q().ultimaVolta = valida(el.value) ? el.value : ''; return true; },
-  'q-ripeti'(el) {
-    if (el.value === 'no') q().ripeti = null;
-    else {
-      const [ogni, unita] = el.value.split('-');
-      if (!unita) return true;
-      q().ripeti = { ogni: +ogni, unita, da: q().ripeti?.da || (unita === 'anni' && +ogni >= 2 ? 'fatto' : 'scadenza'), fineMese: !!q().ripeti?.fineMese };
-    }
-    return true;
-  },
-  'q-da'(el) { q().ripeti.da = el.value; return true; },
-  'q-fineMese'(el) { q().ripeti.fineMese = el.checked; return true; },
   'sett-nome'(el) { q().settimane[S.ui.settSel ?? 0].nome = el.value; },
   'sett-attuale'(el) {
     // sposta l'inizio del ciclo perché la settimana corrente sia quella scelta

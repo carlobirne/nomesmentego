@@ -1,10 +1,12 @@
 // Modello dati della bacheca (versione 2) e normalizzazione.
 // Ogni dato che arriva da fuori (server, import, interfaccia) passa da normalizza():
 // completa i campi mancanti, scarta valori non validi e riferimenti rotti.
-import { GIORNI, valida, validaOra, lunediDi, oggi } from './date.js';
+import { GIORNI, valida, validaOra, lunediDi, oggi, parti, piuGiorni, giorniNelMese } from './date.js';
 
 export const VERSIONE = 2;
-export const TIPI = ['una-volta', 'giornaliero', 'settimanale', 'rotazione', 'mensile', 'annuale', 'scadenza'];
+export const TIPI = ['una-volta', 'giornaliero', 'settimanale', 'rotazione', 'mensile', 'annuale'];
+/** giorni tra un avviso e l'altro quando una scadenza è passata senza "Fatto" */
+export const SCADENZA_OGNI = [1, 2, 3, 4, 5, 7, 10, 14, 30];
 export const UNITA = ['giorni', 'settimane', 'mesi', 'anni'];
 export const AZIONI = ['annulla', 'sposta', 'aggiungi'];
 export const LIMITI = { promemoria: 300, voci: 30, settimane: 12, avvisi: 6, eccezioni: 200, gruppi: 50, persone: 50, testo: 300, nota: 2000 };
@@ -32,8 +34,27 @@ const idValido = (v) => /^[a-z0-9_-]{1,40}$/i.test(String(v ?? ''));
 const lista = (v) => Array.isArray(v) ? v : [];
 const unici = (arr) => [...new Set(arr)];
 
+/**
+ * Ripetizione equivalente a una vecchia "scadenza" (data + "ripeti ogni N unità"):
+ * dal formato precedente, quando la scadenza era un tipo a parte.
+ */
+export function quandoDaScadenza(data, ripeti) {
+  if (!valida(data)) return { tipo: 'una-volta', data };
+  if (!ripeti || typeof ripeti !== 'object') return { tipo: 'una-volta', data };
+  const ogni = Math.max(1, Math.round(Number(ripeti.ogni) || 1));
+  const [y, m, g] = parti(data);
+  const ultimo = g === giorniNelMese(y, m);
+  switch (ripeti.unita) {
+    case 'giorni': return { tipo: 'giornaliero', ogni, inizio: data };
+    case 'settimane': return { tipo: 'giornaliero', ogni: ogni * 7, inizio: data };
+    case 'mesi': return { tipo: 'mensile', modo: 'giorno', giorno: ripeti.fineMese || (ultimo && g >= 28) ? -1 : g, ogni, inizio: data };
+    default: return { tipo: 'annuale', mese: m, giorno: ripeti.fineMese ? 31 : g, ogni, inizio: data };
+  }
+}
+
 function normalizzaQuando(q, oggiISO) {
   q = q && typeof q === 'object' ? q : {};
+  if (q.tipo === 'scadenza') q = quandoDaScadenza(q.scadenza, q.ripeti); // formato precedente
   const tipo = TIPI.includes(q.tipo) ? q.tipo : 'una-volta';
   const dataO = (v, def) => valida(v) ? v : def;
   const giorni = (v) => unici(lista(v).filter((g) => GIORNI.includes(g)));
@@ -70,22 +91,24 @@ function normalizzaQuando(q, oggiISO) {
       };
     }
     case 'annuale':
-      return { tipo, mese: int(q.mese, 1, 12, 1), giorno: int(q.giorno, 1, 31, 1) };
-    case 'scadenza': {
-      const r = q.ripeti && typeof q.ripeti === 'object' ? q.ripeti : null;
-      return {
-        tipo,
-        scadenza: dataO(q.scadenza, oggiISO),
-        ultimaVolta: valida(q.ultimaVolta) ? q.ultimaVolta : '',
-        ripeti: r ? {
-          ogni: int(r.ogni, 1, 120, 1),
-          unita: ['giorni', 'settimane', 'mesi', 'anni'].includes(r.unita) ? r.unita : 'anni',
-          da: r.da === 'scadenza' ? 'scadenza' : 'fatto',
-          fineMese: !!r.fineMese,
-        } : null,
-      };
-    }
+      return { tipo, mese: int(q.mese, 1, 12, 1), giorno: int(q.giorno, 1, 31, 1), ogni: int(q.ogni, 1, 20, 1), inizio: dataO(q.inizio, oggiISO) };
   }
+}
+
+/**
+ * Opzione "scadenza" di un promemoria: se una data passa senza che si prema "Fatto",
+ * arriva un avviso ogni `ogni` giorni finché non lo si preme.
+ * `fattoFino`: le date fino a questa compresa sono già fatte (o precedenti all'attivazione).
+ */
+function normalizzaScadenza(p, quandoGrezzo, oggiISO) {
+  const vecchia = quandoGrezzo && quandoGrezzo.tipo === 'scadenza'; // formato precedente
+  const s = p.scadenza && typeof p.scadenza === 'object' ? p.scadenza : {};
+  const attiva = vecchia || !!p.insisti || !!s.attiva;
+  let fattoFino = valida(s.fattoFino) ? s.fattoFino : '';
+  if (vecchia && !fattoFino && valida(quandoGrezzo.scadenza)) fattoFino = piuGiorni(quandoGrezzo.scadenza, -1);
+  if (attiva && !fattoFino) fattoFino = piuGiorni(oggiISO, -1);
+  const ogni = SCADENZA_OGNI.includes(Number(s.ogni)) ? Number(s.ogni) : (vecchia || p.insisti ? 3 : 1);
+  return { attiva, ogni, fattoFino };
 }
 
 function normalizzaPromemoria(p, gruppi, oggiISO) {
@@ -128,7 +151,7 @@ function normalizzaPromemoria(p, gruppi, oggiISO) {
     voci,
     avvisi,
     eccezioni,
-    insisti: !!p.insisti && quando.tipo === 'scadenza',
+    scadenza: normalizzaScadenza(p, p.quando, oggiISO),
     pausa: !!p.pausa,
     destinatari: unici(lista(p.destinatari).map(String)).filter(idValido),
   };

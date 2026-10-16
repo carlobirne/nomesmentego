@@ -182,11 +182,18 @@ section.card.hero{background:var(--m-blu);color:var(--accent-ink);overflow:hidde
 .nota-ecc{font-size:.85rem;color:var(--red)}
 .annullata{text-decoration:line-through;opacity:.7}
 
-/* scadenze */
-.scadenza{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1.5px dashed var(--line);flex-wrap:wrap}
-.scadenza:first-of-type{border-top:none}
-.scadenza .info{flex:1 1 180px;min-width:0}
-.scadenza .titolo{font-weight:700;font-size:1.05rem}
+/* scadenze: scritta rossa in alto a destra e pulsante "Fatto" */
+.prossimo+.prossimo{margin-top:6px}
+.scadenza-voce{position:relative;border-left:3px solid var(--red);padding:1.35em 0 0 8px}
+.scadenza-voce>.prossimo-testa>.etichetta-scadenza{position:absolute;top:0;right:0}
+.prom-testa{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.etichetta-scadenza{flex:0 0 auto;color:var(--red);font-weight:800;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;line-height:1.6;white-space:nowrap}
+.bottone-fatto{margin:2px 0 4px;color:var(--red);border-color:currentColor}
+.scadenza-voce .pannello{margin:6px 0}
+.scadenza-opzione{margin-top:16px;padding:10px 12px;border:2px dashed var(--line);border-radius:var(--r2)}
+.scadenza-opzione.attiva{border-style:solid;border-color:var(--red)}
+.scadenza-opzione:not(.attiva) .row{color:var(--muted)}
+.scadenza-opzione select:disabled{opacity:.5;cursor:not-allowed}
 .badge{display:inline-flex;align-items:center;border-radius:var(--r3);padding:4px 12px;font-weight:800;font-size:.85rem;white-space:nowrap;border:1.5px solid currentColor}
 .badge.rosso{background:var(--red-bg);color:var(--red)}
 .badge.giallo{background:var(--amber-bg);color:var(--amber)}

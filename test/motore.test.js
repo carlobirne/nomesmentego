@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizza, daRaccoltaRifiuti } from '../web/core/modello.js';
-import { occorrenze, avvisi, prossimaScadenza, segnaFatto, riassunto, settimanaDi, prossime, agenda } from '../web/core/motore.js';
+import { occorrenze, avvisi, scadenzaAttuale, segnaFatto, eScadenza, giaFatta, ogniGiorni, riassunto, settimanaDi, prossime, agenda } from '../web/core/motore.js';
 import { piuMesi, giornoSettimana, oggi, lunediDi } from '../web/core/date.js';
 import { creaAuto, primaRevisione, MODELLI } from '../web/core/modelli.js';
 import { generaICS } from '../web/core/ics.js';
@@ -91,22 +91,59 @@ test('annuale con 29 febbraio e giornaliero ogni 3 giorni', () => {
   assert.deepEqual(date(occorrenze(g, '2026-10-01', '2026-10-20')), ['2026-10-10', '2026-10-13', '2026-10-16', '2026-10-19']);
 });
 
-test('scadenza: preavvisi, insistenza e "Fatto"', () => {
+test('vecchie scadenze: diventano promemoria con il flag Scadenza', () => {
   const p = bacheca([{ id: 'rev', titolo: 'Revisione Passat', insisti: true,
     quando: { tipo: 'scadenza', scadenza: '2027-11-30', ripeti: { ogni: 2, unita: 'anni', da: 'fatto', fineMese: true } },
     avvisi: [{ prima: 20, unita: 'giorni', ora: '09:00' }, { prima: 1, unita: 'mesi', ora: '09:00' }] }]).promemoria[0];
+  assert.equal(p.quando.tipo, 'annuale');
+  assert.deepEqual(p.scadenza, { attiva: true, ogni: 3, fattoFino: '2027-11-29' });
+  assert.deepEqual(date(occorrenze(p, '2026-01-01', '2032-12-31')), ['2027-11-30', '2029-11-30', '2031-11-30']);
   const av = avvisi(p, '2027-01-01', '2027-12-31');
   assert.deepEqual(av.map((a) => a.data).slice(0, 3), ['2027-10-30', '2027-11-10', '2027-12-03']);
   assert.match(av[1].testo, /^Revisione Passat \(tra 20 giorni, 30 nov\)$/);
   assert.equal(av.filter((a) => a.scaduto).length, 10);
-  assert.equal(prossimaScadenza(p.quando, '2027-11-12'), '2029-11-30');
-  const fatto = segnaFatto(p, '2027-11-12');
-  assert.equal(fatto.quando.scadenza, '2029-11-30');
-  assert.equal(fatto.quando.ultimaVolta, '2027-11-12');
+  assert.match(av.find((a) => a.scaduto).testo, /^Scaduto da 3 giorni: Revisione Passat/);
+  assert.equal(scadenzaAttuale(p, '2027-12-05').data, '2027-11-30');
+  const fatto = segnaFatto(p, '2027-11-30');
+  assert.equal(fatto.scadenza.fattoFino, '2027-11-30');
   assert.equal(avvisi(fatto, '2027-11-13', '2027-12-31').length, 0);
-  // da scadenza: il bollo resta ancorato alla sua data anche se pagato in ritardo di oltre un anno
-  const bollo = { tipo: 'scadenza', scadenza: '2025-01-31', ripeti: { ogni: 1, unita: 'anni', da: 'scadenza' } };
-  assert.equal(prossimaScadenza(bollo, '2026-03-01'), '2027-01-31');
+  assert.equal(scadenzaAttuale(fatto, '2027-12-05').data, '2029-11-30');
+  // il bollo resta ancorato alla sua data anche se pagato in ritardo
+  const [bollo] = bacheca([{ quando: { tipo: 'scadenza', scadenza: '2025-01-31', ripeti: { ogni: 1, unita: 'anni', da: 'scadenza' } } }]).promemoria;
+  assert.equal(scadenzaAttuale(bollo, '2026-03-01').data, '2026-01-31');
+  assert.equal(scadenzaAttuale(segnaFatto(bollo, '2026-01-31'), '2026-03-01').data, '2027-01-31');
+});
+
+test('qualunque promemoria può essere una scadenza: avvisi ogni n giorni finché non è fatto', () => {
+  const [p, q] = bacheca([
+    { id: 'tassa', titolo: 'Tassa rifiuti', quando: { tipo: 'mensile', giorno: 16 }, avvisi: [{ prima: 0, unita: 'giorni', ora: '10:00' }],
+      scadenza: { attiva: true, ogni: 1 } },
+    { id: 'mercato', titolo: 'Mercato', quando: { tipo: 'settimanale', giorni: ['mar'] } },
+  ]).promemoria;
+  assert.ok(eScadenza(p) && !eScadenza(q));
+  assert.equal(q.scadenza.attiva, false);
+  assert.equal(p.scadenza.fattoFino, '2026-10-12'); // le date passate prima di accenderla non contano
+  const av = avvisi(p, '2026-10-16', '2026-10-19');
+  assert.deepEqual(av.map((a) => a.data + ' ' + a.ora + (a.scaduto ? ' scaduto' : '')),
+    ['2026-10-16 10:00', '2026-10-17 10:00 scaduto', '2026-10-18 10:00 scaduto', '2026-10-19 10:00 scaduto']);
+  assert.match(av[1].testo, /^Scaduto da 1 giorno: Tassa rifiuti/);
+  // gli avvisi si fermano alla scadenza successiva
+  assert.equal(avvisi(p, '2026-11-15', '2026-11-17').filter((a) => a.scaduto && a.data >= '2026-11-16').length, 1);
+  const fatto = segnaFatto(p, '2026-10-16');
+  assert.ok(giaFatta(fatto, '2026-10-16') && !giaFatta(fatto, '2026-11-16'));
+  assert.equal(avvisi(fatto, '2026-10-16', '2026-11-15').length, 0);
+  assert.equal(scadenzaAttuale(fatto, '2026-10-20').data, '2026-11-16');
+  assert.equal(scadenzaAttuale(p, '2026-10-20').data, '2026-10-16');
+  assert.equal(ogniGiorni(1), 'ogni giorno');
+  assert.equal(ogniGiorni(3), 'ogni 3 giorni');
+  assert.match(riassunto(p), /È una scadenza: .*ogni giorno finché non lo premi/);
+  assert.equal(segnaFatto(q, '2026-10-20'), q); // non è una scadenza: niente da segnare
+});
+
+test('ogni anno o ogni N anni', () => {
+  const [p] = bacheca([{ quando: { tipo: 'annuale', mese: 3, giorno: 15, ogni: 3, inizio: '2026-03-15' } }]).promemoria;
+  assert.deepEqual(date(occorrenze(p, '2025-01-01', '2033-12-31')), ['2026-03-15', '2029-03-15', '2032-03-15']);
+  assert.match(riassunto(p), /^Ogni 3 anni, il 15 mar/);
 });
 
 test('pausa e una-volta', () => {
@@ -179,7 +216,7 @@ test('gli esempi in docs/ e nel prototipo si importano', async () => {
   const leggi = (p) => normalizza(ctx.jsyaml.load(fs.readFileSync(new URL(p, import.meta.url), 'utf8')), OGGI);
   const auto = leggi('../docs/esempi/auto-famiglia.yaml');
   assert.equal(auto.promemoria.length, 10);
-  assert.ok(auto.promemoria.every((p) => p.gruppo && p.avvisi.length === 3 && p.insisti));
+  assert.ok(auto.promemoria.every((p) => p.gruppo && p.avvisi.length === 3 && p.scadenza.attiva && p.scadenza.ogni === 3));
   const rifiuti = leggi('../prototipo/raccolta-rifiuti/examples/pescantina-zona-a1.yaml');
   assert.equal(rifiuti.promemoria[0].voci.length, 5);
 });
