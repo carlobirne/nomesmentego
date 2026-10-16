@@ -257,3 +257,24 @@ test('giorni specifici: quante date si vuole', () => {
   assert.deepEqual(v.quando.date, ['2026-12-01']);
   assert.match(riassunto(v), /^Una volta, martedì 1 dic 2026\./);
 });
+
+test('alcuni giorni dell\'anno: più date, anche ogni N anni', () => {
+  const [p, v] = bacheca([
+    { quando: { tipo: 'annuale', giorniAnno: [{ mese: 6, giorno: 2 }, { mese: 2, giorno: 29 }, { mese: 6, giorno: 2 }] } },
+    { quando: { tipo: 'annuale', mese: 3, giorno: 8 } }, // formato vecchio
+  ]).promemoria;
+  assert.deepEqual(p.quando.giorniAnno, [{ mese: 2, giorno: 29 }, { mese: 6, giorno: 2 }]);
+  assert.deepEqual(date(occorrenze(p, '2027-01-01', '2028-12-31')), ['2027-02-28', '2027-06-02', '2028-02-29', '2028-06-02']);
+  assert.match(riassunto(p), /^Ogni anno, il 29 febbraio e il 2 giugno\./);
+  assert.deepEqual(v.quando.giorniAnno, [{ mese: 3, giorno: 8 }]);
+  assert.match(riassunto(v), /^Ogni anno, l'8 marzo\./);
+});
+
+test('modello Medicine: settimana con le voci delle medicine più comuni', () => {
+  const m = MODELLI.find((x) => x.id === 'medicina');
+  const [p] = bacheca([{ ...m.crea(OGGI), modello: 'medicina' }]).promemoria;
+  assert.equal(p.modello, 'medicina');
+  assert.equal(p.quando.tipo, 'rotazione');
+  assert.deepEqual(p.voci.map((v) => v.nome), ['Vitamina D', 'Antibiotico', 'Integratori', 'Puntura', 'Collirio']);
+  assert.equal(bacheca([{ modello: 'boh' }]).promemoria[0].modello, '');
+});

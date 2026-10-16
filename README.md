@@ -6,9 +6,10 @@ scadenze dell'auto, medicine, compleanni. Si configura dal browser e gli avvisi 
 
 - Ogni **bacheca** (es. "Casa di mamma") ha un **link segreto**: chi lo apre la vede e la modifica dal browser.
   C'è anche un link di **sola lettura**.
-- Promemoria in **giorni specifici** (quante date si vuole), **ogni giorno**, **ogni settimana**, **settimane con voci**
-  (es. settimana A e B che si alternano, con i tipi di rifiuto), **ogni mese** (uno o più giorni fissi, anche
-  "Fine mese", oppure "il primo lunedì"), **ogni anno** (o ogni N anni), con uno o più avvisi agli orari che vuoi.
+- Promemoria in **giorni specifici** (quante date si vuole), **ogni tot giorni**, **alcuni giorni della settimana**,
+  **settimane con voci** (es. settimana A e B che si alternano, con i tipi di rifiuto o le medicine), **alcuni giorni
+  del mese** (uno o più giorni fissi, anche "Fine mese", oppure "il primo lunedì"), **alcuni giorni dell'anno**
+  (anche ogni N anni), con uno o più avvisi agli orari che vuoi.
 - Qualunque promemoria può essere segnato come **scadenza**: passata la data ricorda ogni giorno (o ogni N giorni)
   finché qualcuno non preme **Fatto** (in *Oggi › I prossimi promemoria*, dove le scadenze hanno la scritta rossa,
   o dal messaggio Telegram).

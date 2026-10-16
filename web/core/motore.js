@@ -63,9 +63,9 @@ export function base(p, d) {
     }
     case 'annuale': {
       const [y, m, g] = parti(d);
-      if (m !== q.mese) return null;
       if (q.ogni > 1) { const y0 = parti(q.inizio)[0]; if (y < y0 || (y - y0) % q.ogni !== 0) return null; }
-      return g === Math.min(q.giorno, giorniNelMese(y, m)) ? [] : null;
+      // se il mese è più corto (29 febbraio) vale l'ultimo giorno
+      return q.giorniAnno.some((x) => x.mese === m && g === Math.min(x.giorno, giorniNelMese(y, m))) ? [] : null;
     }
   }
   return null;
@@ -255,7 +255,8 @@ const unitaSing = { giorni: 'giorno', settimane: 'settimana', mesi: 'mese', anni
 export const quantita = (n, unita) => n === 1 ? (unita === 'settimane' ? '1 settimana' : '1 ' + unitaSing[unita]) : n + ' ' + unita;
 
 /** [5, 20, -1] → "il 5, il 20 e a fine mese" */
-export const nomiGiorniMese = (gg) => elenco(gg.map((g) => (g === -1 ? 'a fine mese' : (g === 1 || g === 8 || g === 11 ? "l'" : 'il ') + g)));
+const art = (g) => (g === 1 || g === 8 || g === 11 ? "l'" : 'il ') + g;
+export const nomiGiorniMese = (gg) => elenco(gg.map((g) => (g === -1 ? 'a fine mese' : art(g))));
 
 export function descriviQuando(p) {
   const q = p.quando;
@@ -280,7 +281,7 @@ export function descriviQuando(p) {
       return ogni + ", l'" + ORDINALI[q.n] + ' ' + GIORNI_NOMI[GIORNI.indexOf(q.giornoSett)];
     }
     case 'annuale':
-      return (q.ogni === 1 ? 'Ogni anno' : 'Ogni ' + q.ogni + ' anni') + ', il ' + q.giorno + ' ' + MESI_NOMI[q.mese - 1] +
+      return (q.ogni === 1 ? 'Ogni anno' : 'Ogni ' + q.ogni + ' anni') + ', ' + elenco(q.giorniAnno.map((x) => art(x.giorno) + ' ' + MESI_NOMI[x.mese - 1])) +
         (q.ogni > 1 ? ' (dal ' + parti(q.inizio)[0] + ')' : '');
   }
   return '';

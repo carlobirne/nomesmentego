@@ -8,6 +8,8 @@ export const TIPI = ['una-volta', 'giornaliero', 'settimanale', 'rotazione', 'me
 /** giorni tra un avviso e l'altro quando una scadenza è passata senza "Fatto" */
 export const SCADENZA_OGNI = [1, 2, 3, 4, 5, 7, 10, 14, 30];
 export const UNITA = ['giorni', 'settimane', 'mesi', 'anni'];
+/** da quale modello pronto è nato un promemoria (serve per gli esempi adatti nell'editor) */
+export const MODELLI_ID = ['rifiuti', 'auto', 'compleanno', 'medicina', 'personalizzato'];
 export const AZIONI = ['annulla', 'sposta', 'aggiungi'];
 export const LIMITI = { date: 200, promemoria: 300, voci: 30, settimane: 12, avvisi: 6, eccezioni: 200, gruppi: 50, persone: 50, testo: 300, nota: 2000 };
 
@@ -99,8 +101,16 @@ function normalizzaQuando(q, oggiISO) {
         ogni: int(q.ogni, 1, 12, 1), inizio: dataO(q.inizio, oggiISO),
       };
     }
-    case 'annuale':
-      return { tipo, mese: int(q.mese, 1, 12, 1), giorno: int(q.giorno, 1, 31, 1), ogni: int(q.ogni, 1, 20, 1), inizio: dataO(q.inizio, oggiISO) };
+    case 'annuale': {
+      // uno o più giorni dell'anno (prima ce n'era uno solo, in `mese` e `giorno`)
+      const gd = (x) => ({ mese: int(x?.mese, 1, 12, 1), giorno: int(x?.giorno, 1, 31, 1) });
+      let ga = lista(q.giorniAnno).slice(0, LIMITI.date).map(gd);
+      if (!ga.length) ga = [gd(q)];
+      ga = ga.filter((x, i) => ga.findIndex((y) => y.mese === x.mese && y.giorno === x.giorno) === i)
+        .sort((a, b) => a.mese - b.mese || a.giorno - b.giorno);
+      // `mese` e `giorno`: per chi ha ancora l'app vecchia aperta
+      return { tipo, giorniAnno: ga, mese: ga[0].mese, giorno: ga[0].giorno, ogni: int(q.ogni, 1, 20, 1), inizio: dataO(q.inizio, oggiISO) };
+    }
   }
 }
 
@@ -153,6 +163,7 @@ function normalizzaPromemoria(p, gruppi, oggiISO) {
   return {
     id: idValido(p.id) ? p.id : nuovoId('p'),
     titolo: str(p.titolo || 'Promemoria', 80),
+    modello: MODELLI_ID.includes(p.modello) ? p.modello : '',
     gruppo: gruppi.some((g) => g.id === p.gruppo) ? p.gruppo : '',
     icona: icona(p.icona),
     nota: str(p.nota, LIMITI.nota),

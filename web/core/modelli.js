@@ -39,11 +39,18 @@ export const MODELLI = [
     }),
   },
   {
-    id: 'medicina', icona: 'medicina', nome: 'Medicina',
-    descrizione: 'Ogni giorno o ogni tot giorni',
+    id: 'medicina', icona: 'medicina', nome: 'Medicine e integratori',
+    descrizione: 'Vitamina D, antibiotico, collirio…: scegli cosa prendere nei vari giorni',
     crea: (oggi) => ({
-      titolo: '', icona: 'medicina',
-      quando: { tipo: 'giornaliero', ogni: 1, inizio: oggi },
+      titolo: 'Medicine', icona: 'medicina',
+      quando: { tipo: 'rotazione', inizio: lunediDi(oggi), settimane: [{ nome: 'Ogni settimana', giorni: {} }] },
+      voci: [
+        { id: 'vitamina-d', nome: 'Vitamina D', colore: '#f6c700' },
+        { id: 'antibiotico', nome: 'Antibiotico', colore: '#e8231c' },
+        { id: 'integratori', nome: 'Integratori', colore: '#2db04b' },
+        { id: 'puntura', nome: 'Puntura', colore: '#6b3fa0' },
+        { id: 'collirio', nome: 'Collirio', colore: '#2e5fa8' },
+      ],
       avvisi: [mattina('08:00')],
     }),
   },
@@ -86,6 +93,7 @@ export function creaAuto({ nome, icona = 'auto', colore = '#e8231c', scadenze = 
   const promemoria = VOCI_AUTO.filter((v) => valida(scadenze[v.id])).map((v) => ({
     id: nuovoId('p'),
     titolo: v.nome + ' ' + gruppo.nome,
+    modello: 'auto',
     gruppo: gruppo.id,
     icona: '',
     nota: v.nota || '',

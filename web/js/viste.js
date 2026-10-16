@@ -614,7 +614,7 @@ export const AZIONI = {
   'usa-modello'(el) {
     const m = MODELLI.find((x) => x.id === el.dataset.id);
     if (m.speciale) { S.ui.auto = null; location.hash = '#auto'; return; }
-    S.bozza = normalizza({ versione: 2, gruppi: S.dati.gruppi, promemoria: [{ ...m.crea(oggi()), id: nuovoId('p') }] }, oggi()).promemoria[0];
+    S.bozza = normalizza({ versione: 2, gruppi: S.dati.gruppi, promemoria: [{ ...m.crea(oggi()), id: nuovoId('p'), modello: m.id }] }, oggi()).promemoria[0];
     S.bozzaNuova = true;
     location.hash = '#modifica/' + S.bozza.id;
   },
