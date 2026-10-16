@@ -7,6 +7,10 @@ import { normalizza, nuovoId, SCADENZA_OGNI } from '../core/modello.js';
 import { riassunto, prossime, settimanaDi, descriviQuando, nomiVoci, ogniGiorni } from '../core/motore.js';
 import { GIORNI, GIORNI_NOMI, MESI_NOMI, lunediDi, piuGiorni, fmtGiorno, fmt, valida } from '../core/date.js';
 
+// "Giorni speciali" (festività, recuperi…) per ora è nascosto: si vede solo se un promemoria ne ha già,
+// così si possono togliere. Per riaccenderlo basta mettere true.
+const GIORNI_SPECIALI = false;
+
 const TIPI = [
   ['una-volta', 'Una volta'], ['giornaliero', 'Ogni giorno'], ['settimanale', 'Ogni settimana'],
   ['rotazione', 'Settimane a rotazione'], ['mensile', 'Ogni mese'], ['annuale', 'Ogni anno'],
@@ -66,7 +70,7 @@ export function vistaEditor() {
   h += '<section class="card"><div class="passo"><span class="n">3</span><h2>Quando avvisarti</h2></div>';
   h += editorAvvisi(p) + '</section>';
 
-  if (q.tipo !== 'una-volta') h += editorEccezioni(p);
+  if (q.tipo !== 'una-volta' && (GIORNI_SPECIALI || p.eccezioni.length)) h += editorEccezioni(p);
 
   h += '<section class="card"><div class="riassunto" id="riassunto" aria-live="polite">' + riassuntoHTML() + '</div>';
   if (!S.bozzaNuova) {
@@ -210,7 +214,8 @@ function editorEccezioni(p) {
     h += '<label class="field">Nota<input type="text" data-bind="ecc-nota" data-i="' + i + '" value="' + esc(e.nota) + '" placeholder="es. Capodanno" maxlength="140"></label>' +
       '<button class="btn danger piccolo" data-act="ed-ecc-del" data-i="' + i + '">Togli</button></div>';
   }
-  h += '<button class="btn" data-act="ed-ecc-add" style="margin-top:8px">+ Aggiungi un giorno speciale</button></details></section>';
+  if (GIORNI_SPECIALI) h += '<button class="btn" data-act="ed-ecc-add" style="margin-top:8px">+ Aggiungi un giorno speciale</button>';
+  h += '</details></section>';
   return h;
 }
 
