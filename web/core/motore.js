@@ -34,7 +34,7 @@ export function base(p, d) {
   const q = p.quando;
   switch (q.tipo) {
     case 'una-volta':
-      return q.data === d ? [] : null;
+      return q.date.includes(d) ? [] : null;
     case 'giornaliero': {
       const n = differenza(q.inizio, d);
       return n >= 0 && n % q.ogni === 0 ? [] : null;
@@ -54,9 +54,12 @@ export function base(p, d) {
       const [y, m] = parti(d), [y0, m0] = parti(q.inizio);
       if (((y - y0) * 12 + (m - m0)) % q.ogni !== 0) return null;
       let atteso;
-      if (q.modo === 'giorno') atteso = componi(y, m, q.giorno === -1 ? giorniNelMese(y, m) : Math.min(q.giorno, giorniNelMese(y, m)));
-      else atteso = ennesimoGiorno(y, m, q.n, GIORNI.indexOf(q.giornoSett));
-      return atteso === d ? [] : null;
+      if (q.modo === 'giorno') {
+        // il 29, 30, 31 non ci sono in tutti i mesi: lì quel giorno salta ("Fine mese" invece c'è sempre)
+        const g = parti(d)[2];
+        return q.giorni.includes(g) || (q.giorni.includes(-1) && g === giorniNelMese(y, m)) ? [] : null;
+      }
+      return ennesimoGiorno(y, m, q.n, GIORNI.indexOf(q.giornoSett)) === d ? [] : null;
     }
     case 'annuale': {
       const [y, m, g] = parti(d);
@@ -114,9 +117,9 @@ export function occorrenze(p, da, a, { annullate = false } = {}) {
   if (p.pausa) return [];
   const out = [];
   const q = p.quando;
-  // scorciatoie per i tipi con una sola data nota
+  // scorciatoia per i giorni specifici: le date sono già note
   if (q.tipo === 'una-volta' && !p.eccezioni.length) {
-    return q.data >= da && q.data <= a ? [{ data: q.data, voci: [], note: [], cambiata: false }] : [];
+    return q.date.filter((x) => x >= da && x <= a).map((x) => ({ data: x, voci: [], note: [], cambiata: false }));
   }
   const n = differenza(da, a);
   for (let i = 0; i <= n; i++) {
@@ -251,11 +254,18 @@ const ORDINALI = { 1: 'primo', 2: 'secondo', 3: 'terzo', 4: 'quarto', '-1': 'ult
 const unitaSing = { giorni: 'giorno', settimane: 'settimana', mesi: 'mese', anni: 'anno' };
 export const quantita = (n, unita) => n === 1 ? (unita === 'settimane' ? '1 settimana' : '1 ' + unitaSing[unita]) : n + ' ' + unita;
 
+/** [5, 20, -1] → "il 5, il 20 e a fine mese" */
+export const nomiGiorniMese = (gg) => elenco(gg.map((g) => (g === -1 ? 'a fine mese' : (g === 1 || g === 8 || g === 11 ? "l'" : 'il ') + g)));
+
 export function descriviQuando(p) {
   const q = p.quando;
   const nomiG = (gs) => elenco(gs.map((g) => GIORNI_NOMI[GIORNI.indexOf(g)]));
   switch (q.tipo) {
-    case 'una-volta': return 'Una volta, ' + GIORNI_NOMI[giornoSettimana(q.data)] + ' ' + fmtAnno(q.data);
+    case 'una-volta': {
+      if (q.date.length === 1) return 'Una volta, ' + GIORNI_NOMI[giornoSettimana(q.data)] + ' ' + fmtAnno(q.data);
+      const primi = q.date.slice(0, 4).map(fmtAnno);
+      return 'In ' + q.date.length + ' giorni: ' + (q.date.length > 4 ? primi.join(', ') + ' e altri ' + (q.date.length - 4) : elenco(primi));
+    }
     case 'giornaliero': return q.ogni === 1 ? 'Ogni giorno' : 'Ogni ' + q.ogni + ' giorni';
     case 'settimanale':
       if (!q.giorni.length) return 'Ogni settimana (scegli i giorni)';
@@ -266,7 +276,7 @@ export function descriviQuando(p) {
     }
     case 'mensile': {
       const ogni = q.ogni === 1 ? 'Ogni mese' : 'Ogni ' + q.ogni + ' mesi';
-      if (q.modo === 'giorno') return ogni + (q.giorno === -1 ? ", l'ultimo giorno" : ', il giorno ' + q.giorno);
+      if (q.modo === 'giorno') return ogni + ', ' + nomiGiorniMese(q.giorni);
       return ogni + ", l'" + ORDINALI[q.n] + ' ' + GIORNI_NOMI[GIORNI.indexOf(q.giornoSett)];
     }
     case 'annuale':

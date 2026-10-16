@@ -143,6 +143,13 @@ button.chip[aria-pressed="true"]{background:var(--m-giallo);color:#1b1712}
 .giorni-sett{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .giorni-sett button{min-height:52px;border-radius:50% 46% 52% 44% / 48% 54% 46% 52%;border:2px solid var(--line);background:var(--surface);font-weight:800;cursor:pointer;padding:0}
 .giorni-sett button[aria-pressed="true"]{background:var(--m-rosso);color:#fff}
+.giorni-mese{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.giorni-mese button{min-height:44px;border-radius:var(--r2);border:2px solid var(--line);background:var(--surface);font-weight:800;cursor:pointer;padding:0;font-variant-numeric:tabular-nums}
+.giorni-mese button[aria-pressed="true"]{background:var(--m-rosso);color:#fff}
+.giorni-mese .fine-mese{grid-column:span 4}
+.avviso-ed{border-top:1.5px dashed var(--line);padding-top:10px;margin-top:10px}
+.avviso-ed:first-of-type{border-top:none;margin-top:0}
+.avviso-n{flex-basis:100%;font-family:var(--font-mano);font-weight:700;font-size:1.15rem}
 .icone-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:6px}
 .icone-pick button{height:56px;border-radius:var(--r2);border:2px solid transparent;background:transparent;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center}
 .icone-pick button svg{width:40px;height:40px}
@@ -235,17 +242,40 @@ details.altro summary::before{content:"";flex:0 0 auto;width:10px;height:10px;ma
 details.altro[open] > summary::before{transform:translateY(-3px) rotate(45deg)}
 @media (prefers-reduced-motion: reduce){details.altro summary::before{transition:none}}
 
-/* ---------- schema settimane ---------- */
+/* ---------- specchietto ---------- */
+.scelte.scelte-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.scelte.scelte-2 button{text-align:center}
 .schema-wrap{overflow-x:auto}
 table.schema{border-collapse:collapse;width:100%;table-layout:fixed}
 table.schema th{font-family:var(--font-mano);font-size:1.15rem;color:var(--muted);padding:4px;text-align:left;font-weight:700}
-table.schema td{border:1.5px solid var(--line);vertical-align:top;padding:3px;height:74px}
+table.schema td{border:1.5px solid var(--line);vertical-align:top;padding:0;height:1px}
+table.schema td.fuori{border:none;background:transparent}
+table.schema td.riga-sett{height:auto;border:none;padding:8px 2px 2px}
 table.schema td.oggi{background:color-mix(in srgb,var(--m-giallo) 35%,transparent)}
 table.schema td.passato{opacity:.45}
+table.schema td.scelto{outline:3px solid var(--m-blu);outline-offset:-3px}
+.giorno-tasto{display:flex;flex-direction:column;align-items:stretch;gap:3px;width:100%;height:100%;min-height:78px;padding:3px;background:none;border:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
 table.schema .num{font-size:.78rem;font-weight:700;color:var(--muted)}
-table.schema .ev{display:block;font-size:.74rem;font-weight:700;line-height:1.2;border-radius:var(--r3);padding:2px 5px;margin-top:3px;overflow-wrap:anywhere;border:1px solid var(--line)}
+/* una riga sola per evento, con i puntini se non ci sta: il testo intero è nel dettaglio del giorno */
+table.schema .ev{display:block;font-size:.74rem;font-weight:700;line-height:1.25;border-radius:var(--r3);padding:2px 5px;border:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+table.schema.mese .giorno-tasto{min-height:66px}
+table.schema .ev.altri{background:var(--ink);color:var(--surface);text-align:center;border-color:var(--ink)}
 table.schema .settimana{font-family:var(--font-mano);font-size:1.15rem;color:var(--ink);font-weight:700}
-@media (max-width:520px){table.schema .ev{font-size:.62rem;padding:1px 3px;overflow-wrap:break-word}table.schema th{font-size:.95rem;padding:2px}table.schema .num{font-size:.68rem}}
+.mese-titolo{font-family:var(--font-mano);font-size:1.5rem;margin:10px 0 4px;text-transform:capitalize}
+.mese-titolo:first-child{margin-top:0}
+.solo-stampa{display:none}
+.legenda{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font-size:.88rem;font-weight:700}
+.legenda span{display:inline-flex;align-items:center;gap:6px}
+.legenda i{width:14px;height:14px;border-radius:4px;border:1px solid var(--line);flex:0 0 auto}
+.dettaglio-giorno{margin-top:12px;padding:12px;border:2px solid var(--m-blu);border-radius:var(--r2);background:var(--surface-2)}
+.dettaglio-giorno .riga-occ{margin-top:8px}
+@media (max-width:520px){
+  table.schema .ev{font-size:.62rem;padding:1px 3px;border-radius:6px}
+  table.schema th{font-size:.95rem;padding:2px}
+  table.schema .num{font-size:.68rem}
+  .giorno-tasto{min-height:70px;padding:2px}
+  .mese .giorno-tasto{min-height:58px}
+}
 
 /* ---------- varie ---------- */
 .notice{border-radius:var(--r2);padding:12px 14px;background:var(--surface-2);border:2px dashed var(--line);font-size:.95rem}
@@ -265,6 +295,9 @@ table.schema .settimana{font-family:var(--font-mano);font-size:1.15rem;color:var
   main{padding:0}
   section.card{border:none;padding:0}
   .schema-wrap{overflow:visible}
-  table.schema td{height:70px}
-  .ev,td.oggi{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .giorno-tasto{min-height:70px}
+  table.schema .ev{white-space:normal}
+  .solo-stampa{display:contents}
+  table.schema .ev.altri{display:none}
+  .ev,td.oggi,.legenda i{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }

@@ -49,11 +49,11 @@ export const MODELLI = [
   },
   {
     id: 'personalizzato', icona: 'campanella', nome: 'Personalizzato',
-    descrizione: 'Scegli tu cosa, quando e ogni quanto: una volta, ogni settimana, ogni mese, ogni anno…',
+    descrizione: 'Scegli tu cosa, quando e ogni quanto: giorni specifici, ogni settimana, ogni mese, ogni anno…',
     crea: (oggi) => ({
       titolo: '', icona: 'campanella',
-      quando: { tipo: 'una-volta', data: piuGiorni(oggi, 1) },
-      avvisi: [sera('20:00')],
+      quando: { tipo: 'una-volta', date: [piuGiorni(oggi, 1)] },
+      avvisi: [mattina('08:00')],
     }),
   },
 ];

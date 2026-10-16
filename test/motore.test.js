@@ -232,3 +232,28 @@ test('le vecchie emoji diventano disegni e il calendario non ha emoji', () => {
   assert.match(testo, /SUMMARY:Bidone\r\n/);
   assert.doesNotMatch(testo, /[\u{1F000}-\u{1FFFF}]/u);
 });
+
+test('ogni mese, più giorni fissi: il 31 salta nei mesi corti, "Fine mese" no', () => {
+  const [p] = bacheca([{ quando: { tipo: 'mensile', modo: 'giorno', giorni: [31, 5, -1, 15], inizio: '2026-01-01' } }]).promemoria;
+  assert.deepEqual(p.quando.giorni, [5, 15, 31, -1]);
+  assert.deepEqual(date(occorrenze(p, '2026-02-01', '2026-04-30')),
+    ['2026-02-05', '2026-02-15', '2026-02-28', '2026-03-05', '2026-03-15', '2026-03-31', '2026-04-05', '2026-04-15', '2026-04-30']);
+  assert.equal(riassunto(p).split('.')[0], 'Ogni mese, il 5, il 15, il 31 e a fine mese');
+  // il formato vecchio (un giorno solo) si converte: il 31 era già "l'ultimo giorno"
+  const [v31, v8] = bacheca([{ quando: { tipo: 'mensile', giorno: 31 } }, { quando: { tipo: 'mensile', giorno: 8 } }]).promemoria;
+  assert.deepEqual([v31.quando.giorni, v8.quando.giorni], [[-1], [8]]);
+  assert.match(riassunto(v8), /^Ogni mese, l'8\./);
+});
+
+test('giorni specifici: quante date si vuole', () => {
+  const [p] = bacheca([{ quando: { tipo: 'una-volta', date: ['2027-03-13', '2026-11-20', 'boh', '2026-11-20'] }, avvisi: [{ prima: 1, unita: 'giorni', ora: '21:00' }, { prima: 0, unita: 'giorni', ora: '08:00' }] }]).promemoria;
+  assert.deepEqual(p.quando.date, ['2026-11-20', '2027-03-13']);
+  assert.equal(p.quando.data, '2026-11-20');
+  assert.deepEqual(date(prossime(p, OGGI, 5)), ['2026-11-20', '2027-03-13']);
+  assert.deepEqual(avvisi(p, '2026-11-19', '2026-11-20').map((a) => a.data + ' ' + a.ora), ['2026-11-19 21:00', '2026-11-20 08:00']);
+  assert.match(riassunto(p), /^In 2 giorni: 20 nov 2026 e 13 mar 2027\. Ti avviso la sera prima alle 21:00 e il giorno stesso alle 8:00\./);
+  // il formato vecchio (una data sola)
+  const [v] = bacheca([{ quando: { tipo: 'una-volta', data: '2026-12-01' } }]).promemoria;
+  assert.deepEqual(v.quando.date, ['2026-12-01']);
+  assert.match(riassunto(v), /^Una volta, martedì 1 dic 2026\./);
+});
