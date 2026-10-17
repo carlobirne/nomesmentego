@@ -13,8 +13,8 @@ scadenze dell'auto, medicine, compleanni. Si configura dal browser e gli avvisi 
 - Qualunque promemoria può essere segnato come **scadenza**: passata la data ricorda ogni giorno (o ogni N giorni)
   finché qualcuno non preme **Fatto** (in *Oggi › I prossimi promemoria*, dove le scadenze hanno la scritta rossa,
   o dal messaggio Telegram).
-- **Calendario in abbonamento**: un tocco per aggiungerlo a Calendario di iPhone o Google Calendar; le modifiche
-  si aggiornano da sole.
+- **Calendario in abbonamento**: un tocco per aggiungerlo a Calendario di iPhone o Google Calendar (e, passando da
+  Google, al Calendario Samsung e agli altri calendari Android); le modifiche si aggiornano da sole.
 - **Notifiche dell'app**: gli avvisi arrivano come notifiche sul telefono, senza installare niente
   (Android con Chrome; su iPhone dall'icona sulla schermata Home, iOS 16.4 o successivo).
 - **Email**: un elenco di indirizzi per bacheca, con oggetto e testo personalizzabili; ogni indirizzo conferma
