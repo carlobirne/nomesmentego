@@ -10,6 +10,8 @@ import { MODELLI, VOCI_AUTO, creaAuto, primaRevisione } from '../core/modelli.js
 import { piuGiorni, piuMesi, differenza, lunediDi, fineMese, fmt, fmtAnno, fmtGiorno, fmtLungo, GIORNI, MESI_NOMI, valida } from '../core/date.js';
 
 /* ---------- utilità comuni ---------- */
+/** La creaturina (logo dell'app) come iconcina: al posto del vecchio occhio. */
+const marchio = (cls) => '<img class="marchio-ico ' + cls + '" src="/icone/logo.svg" alt="" aria-hidden="true">';
 export const gruppoDi = (p) => S.dati.gruppi.find((g) => g.id === p.gruppo);
 export const iconaDi = (p) => p.icona || gruppoDi(p)?.icona || 'campanella';
 const coloreDi = (p) => gruppoDi(p)?.colore || '#1f4aa8';
@@ -64,7 +66,7 @@ export function vistaHome() {
     h += '<section class="card"><h2>Bacheche aperte su questo telefono</h2><p class="muted small">Sono solo scorciatoie salvate in questo browser: gli altri non le vedono, e toglierle dall\'elenco non cancella la bacheca.</p><div class="stack">';
     for (const x of r) {
       h += '<div class="row"><a class="btn wide" style="flex:1;justify-content:flex-start" href="/' + (x.permesso === 'lettura' ? 'v' : 'b') + '/' + esc(x.token) + '">' +
-        icona(x.permesso === 'lettura' ? 'occhio' : 'calendario', 'mini') + '<span>' + esc(x.nome) + (x.permesso === 'lettura' ? ' <span class="muted small">(sola lettura)</span>' : '') + '</span></a>' +
+        (x.permesso === 'lettura' ? marchio('mini') : icona('calendario', 'mini')) + '<span>' + esc(x.nome) + (x.permesso === 'lettura' ? ' <span class="muted small">(sola lettura)</span>' : '') + '</span></a>' +
         '<button class="btn ghost piccolo" data-act="dimentica" data-token="' + esc(x.token) + '" aria-label="Togli ' + esc(x.nome) + ' dall\'elenco (la bacheca non viene cancellata)">Togli dall\'elenco</button></div>';
     }
     h += '</div></section>';
@@ -387,7 +389,7 @@ export function vistaCondividi() {
   h += '<div class="row" style="margin-top:12px"><button class="btn" data-act="backup">Scarica una copia (file)</button><button class="btn" data-act="importa">Importa da file</button></div>' +
     '<p class="small muted" style="margin:8px 0 0">L\'importazione <b>aggiunge</b> i promemoria del file a quelli che ci sono. Va bene anche il file .yaml della vecchia app "Raccolta rifiuti".</p></section>';
 
-  h += '<section class="card"><h2>' + icona('occhio', 'titolo') + 'Cambia i link</h2><p class="small muted">Se un link è finito nelle mani sbagliate, cambialo: quello vecchio smette di funzionare. Poi rimanda quello nuovo a chi serve (per il calendario: va riaggiunto sui telefoni).</p><div class="row">' +
+  h += '<section class="card"><h2>' + marchio('titolo') + 'Cambia i link</h2><p class="small muted">Se un link è finito nelle mani sbagliate, cambialo: quello vecchio smette di funzionare. Poi rimanda quello nuovo a chi serve (per il calendario: va riaggiunto sui telefoni).</p><div class="row">' +
     (S.ui.conferma === 'rig-modifica' ? '<button class="btn danger" data-act="rigenera-ok" data-quale="modifica">Conferma: cambia il link per modificare</button>' : '<button class="btn danger" data-act="rigenera" data-quale="modifica">Cambia il link per modificare</button>') +
     (S.ui.conferma === 'rig-lettura' ? '<button class="btn danger" data-act="rigenera-ok" data-quale="lettura">Conferma: cambia sola lettura e calendario</button>' : '<button class="btn danger" data-act="rigenera" data-quale="lettura">Cambia sola lettura e calendario</button>') +
     '</div></section>';
