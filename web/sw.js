@@ -8,7 +8,7 @@ self.addEventListener('push', (e) => {
   try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data && e.data.text() }; }
   e.waitUntil(self.registration.showNotification(d.title || 'Promemoria', {
     body: d.body || '', tag: d.tag, lang: 'it',
-    icon: '/icone/icona-192.png', badge: '/icone/badge-96.png',
+    icon: '/icone/icona-192.png?v=2', badge: '/icone/badge-96.png?v=2',
     data: { url: d.url || '/' },
   }));
 });
