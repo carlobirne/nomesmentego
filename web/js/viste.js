@@ -94,7 +94,7 @@ export function vistaOggi() {
   }
   const avOggi = tuttiGliAvvisi(d, t, t), avDomani = tuttiGliAvvisi(d, dom, dom);
   const succede = agenda(d, t, t)[0]?.voci ?? [];
-  h += '<section class="card hero" aria-live="polite"><div class="label">Oggi, ' + esc(fmtLungo(t)) + '</div>';
+  h += '<section class="card hero" aria-live="polite"><h2>Oggi, ' + esc(fmtLungo(t)) + '</h2>';
   if (avOggi.length) h += avOggi.map(avvisoHTML).join('');
   else if (!succede.length) h += '<div class="niente">Niente da ricordare</div>';
   if (succede.length) {
