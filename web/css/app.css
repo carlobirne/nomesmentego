@@ -169,7 +169,8 @@ button.chip[aria-pressed="true"]{background:var(--m-giallo);color:#1b1712}
 .modelli span{font-size:.85rem;color:var(--muted)}
 
 /* ---------- oggi ---------- */
-section.card.hero{background:var(--m-blu);color:var(--accent-ink);overflow:hidden}
+section.card.hero{background:var(--m-blu);color:var(--accent-ink);overflow:hidden;padding-top:14px;padding-bottom:14px}
+.hero .niente{font-weight:700;font-size:1.05rem;margin-top:4px}
 .hero .deco-oggi{position:absolute;right:8px;top:6px;width:110px;height:auto;opacity:.95;pointer-events:none}
 .hero .label{font-size:.95rem;opacity:.95;font-weight:700;position:relative}
 .hero .grande{font-family:var(--font-mano);font-weight:700;font-size:clamp(2.2rem,9vw,2.9rem);line-height:1;margin:4px 0 12px;position:relative}
