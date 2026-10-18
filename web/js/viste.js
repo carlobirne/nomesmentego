@@ -94,11 +94,11 @@ export function vistaOggi() {
   }
   const avOggi = tuttiGliAvvisi(d, t, t), avDomani = tuttiGliAvvisi(d, dom, dom);
   const succede = agenda(d, t, t)[0]?.voci ?? [];
-  h += '<section class="card hero" aria-live="polite">' + SCENE.oggi + '<div class="label">Oggi, ' + esc(fmtLungo(t)) + '</div>';
-  if (avOggi.length) h += '<div class="grande">Da ricordare</div>' + avOggi.map(avvisoHTML).join('');
-  else h += '<div class="grande">' + (succede.length ? 'Oggi succede' : 'Niente da ricordare') + '</div>';
+  h += '<section class="card hero" aria-live="polite"><div class="label">Oggi, ' + esc(fmtLungo(t)) + '</div>';
+  if (avOggi.length) h += avOggi.map(avvisoHTML).join('');
+  else if (!succede.length) h += '<div class="niente">Niente da ricordare</div>';
   if (succede.length) {
-    h += (avOggi.length ? '<div class="label" style="margin-top:12px">Succede oggi</div>' : '') +
+    h += '<div class="label" style="margin-top:' + (avOggi.length ? '12px' : '6px') + '">Succede oggi</div>' +
       succede.map(({ p, o }) => occorrenzaHTML(p, o)).join('');
   }
   h += '</section>';
@@ -267,7 +267,7 @@ export function vistaCalendario() {
   const d = S.dati, t = oggi();
   const modo = S.ui.specchietto === 'mese' ? 'mese' : 'settimane';
   const rot = d.promemoria.find((p) => p.quando.tipo === 'rotazione' && p.quando.settimane.length > 1 && !p.pausa);
-  let h = '<section class="card no-print"><h2>Specchietto</h2><p class="muted small">Tutto quello che succede, giorno per giorno. Utile anche da stampare e attaccare al frigo.</p>' +
+  let h = '<section class="card no-print"><h2>Specchietto</h2><p class="muted small">La tua bacheca giorno per giorno. Utile da stampare e attaccare al frigo.</p>' +
     '<div class="scelte scelte-2" role="group" aria-label="Come vederlo"><button data-act="specchietto" data-v="settimane" aria-pressed="' + (modo === 'settimane') + '">Settimane</button>' +
     '<button data-act="specchietto" data-v="mese" aria-pressed="' + (modo === 'mese') + '">Mese</button></div><div class="row end" style="margin-top:10px">';
   if (modo === 'settimane') {
@@ -316,8 +316,6 @@ export function vistaCalendario() {
   for (const lista of ag.values()) for (const r of righeGiorno(lista)) if (!r.annullata && !presenti.has(r.testo)) presenti.set(r.testo, r.colore);
   const legenda = presenti.size ? '<div class="legenda" aria-label="Legenda">' + [...presenti].map(([n, c]) => '<span><i style="background:' + c + '"></i>' + esc(n) + '</span>').join('') + '</div>' : '';
   h += '<section class="card"><h2 class="stampa-titolo">' + esc(d.nome) + '</h2><div class="schema-wrap">' + tabelle + '</div>' + legenda + dettaglioGiorno(ag, t);
-  const conAvvisoSera = d.promemoria.some((p) => p.avvisi.some((a) => a.prima === 1 && a.unita === 'giorni'));
-  if (conAvvisoSera) h += '<p class="small muted" style="margin:8px 0 0">Qui ci sono i giorni in cui le cose succedono (per la spazzatura, il giorno di ritiro: si espone la sera prima).</p>';
   return h + '</section>';
 }
 
