@@ -104,7 +104,7 @@ export function vistaOggi() {
   if (avOggi.length) h += avOggi.map(avvisoHTML).join('');
   else if (!succede.length) h += '<div class="niente">Niente da ricordare</div>';
   if (succede.length) {
-    h += '<div class="label" style="margin-top:' + (avOggi.length ? '12px' : '6px') + '">Succede oggi</div>' +
+    h += '<div style="margin-top:' + (avOggi.length ? '12px' : '0') + '"></div>' +
       succede.map(({ p, o }) => occorrenzaHTML(p, o)).join('');
   }
   h += '</section>';
