@@ -198,6 +198,13 @@ export async function gestisci(request, env, archivio = new ArchivioD1(env.DB), 
       }), { headers: { 'content-type': 'application/manifest+json', 'cache-control': 'no-store' } });
     }
 
+    // ---------- pagina di una bacheca: l'app, con il manifest e il nome di QUESTA bacheca ----------
+    // Serve soprattutto all'iPhone: "Aggiungi a schermata Home" legge il manifest della pagina così come
+    // arriva dal server, e senza questo l'icona riaprirebbe la pagina iniziale invece della bacheca.
+    if ((parti[0] === 'b' || parti[0] === 'v') && TOKEN.test(parti[1] ?? '') && parti.length === 2 && metodo === 'GET' && env.ASSETS) {
+      return paginaBacheca(env, url, parti[0], parti[1], archivio);
+    }
+
     if (parti[0] === 'api') return errore(404, 'Indirizzo sconosciuto.');
     return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Non trovato', { status: 404 });
   } catch (e) {
@@ -205,6 +212,23 @@ export async function gestisci(request, env, archivio = new ArchivioD1(env.DB), 
     console.error(e);
     return errore(500, 'Errore del server, riprova tra poco.');
   }
+}
+
+const attr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+async function paginaBacheca(env, url, tipo, token, archivio) {
+  const pagina = await env.ASSETS.fetch(new Request(new URL('/', url)));
+  if (!pagina.ok) return pagina;
+  let nome = '';
+  try {
+    const riga = tipo === 'b' ? await archivio.perModifica(await impronta(token)) : await archivio.perLettura(token);
+    if (riga) nome = String(JSON.parse(riga.dati).nome || '').slice(0, 40);
+  } catch { /* senza nome va bene lo stesso */ }
+  const manifest = '/manifest/' + tipo + '/' + token + (nome ? '?nome=' + encodeURIComponent(nome) : '');
+  let html = (await pagina.text())
+    .replace(/<link id="manifest" rel="manifest" href="[^"]*">/, '<link id="manifest" rel="manifest" href="' + attr(manifest) + '">');
+  if (nome) html = html.replace(/<meta name="apple-mobile-web-app-title" content="[^"]*">/, '<meta name="apple-mobile-web-app-title" content="' + attr(nome) + '">');
+  return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } });
 }
 
 export default {

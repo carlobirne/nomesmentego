@@ -62,16 +62,20 @@ export function vistaHome() {
     '<label class="field">Come la chiamiamo?<input type="text" id="nomeNuova" class="grande" placeholder="es. promemoria settimanali, ricorrenze auto, ..." maxlength="60"></label>' +
     (S.ui.serveCodice ? '<label class="field">Codice di invito<span class="aiuto">Te lo dà chi ha installato l\'app.</span><input type="text" id="codiceNuova" autocomplete="off"></label>' : '') +
     '<button class="btn primary big" data-act="crea-bacheca">Crea la bacheca</button></div></section>';
+  h += '<section class="card"><h2>Le mie bacheche</h2>';
   if (r.length) {
-    h += '<section class="card"><h2>Bacheche aperte su questo telefono</h2><p class="muted small">Sono solo scorciatoie salvate in questo browser: gli altri non le vedono, e toglierle dall\'elenco non cancella la bacheca.</p><div class="stack">';
+    h += '<p class="muted small">Sono solo scorciatoie salvate su questo telefono: gli altri non le vedono, e toglierle dall\'elenco non cancella la bacheca.</p><div class="stack">';
     for (const x of r) {
       h += '<div class="row"><a class="btn wide" style="flex:1;justify-content:flex-start" href="/' + (x.permesso === 'lettura' ? 'v' : 'b') + '/' + esc(x.token) + '">' +
         (x.permesso === 'lettura' ? marchio('mini') : icona('calendario', 'mini')) + '<span>' + esc(x.nome) + (x.permesso === 'lettura' ? ' <span class="muted small">(sola lettura)</span>' : '') + '</span></a>' +
         '<button class="btn ghost piccolo" data-act="dimentica" data-token="' + esc(x.token) + '" aria-label="Togli ' + esc(x.nome) + ' dall\'elenco (la bacheca non viene cancellata)">Togli dall\'elenco</button></div>';
     }
-    h += '</div></section>';
-  }
-  h += '<section class="card"><h2>Hai ricevuto un link?</h2><p class="muted">Aprilo e basta: la bacheca si apre qui e la ritrovi in questo elenco.</p></section>';
+    h += '</div>';
+  } else h += '<p class="muted small">Qui trovi le bacheche che apri da questo telefono.</p>';
+  h += '<div class="stack" style="margin-top:14px"><label class="field">Aggiungi una bacheca con il link<span class="aiuto">Incolla il link che ti hanno mandato (o quello che hai salvato): la bacheca si apre e resta in questo elenco.</span>' +
+    '<input type="url" id="linkBacheca" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…/b/… oppure https://…/v/…"></label>' +
+    '<button class="btn" data-act="aggiungi-link">Aggiungi e apri</button></div>' +
+    '<p class="small muted" style="margin:10px 0 0">Su iPhone l\'app aggiunta alla schermata Home ha un elenco tutto suo, separato da quello di Safari: se una bacheca non c\'è, aggiungila qui con il suo link.</p></section>';
   return h;
 }
 
@@ -585,6 +589,13 @@ export const AZIONI = {
     } catch (e) { toast(e.message); el.disabled = false; }
   },
   'dimentica'(el) { dimentica(el.dataset.token); render(); },
+  'aggiungi-link'() {
+    const testo = document.getElementById('linkBacheca')?.value.trim() || '';
+    // va bene il link intero oppure solo la parte /b/<chiave> o /v/<chiave>
+    const m = /(?:^|\/)(b|v)\/([A-Za-z0-9_-]{20,64})(?=[/?#]|$)/.exec(testo);
+    if (!m) { toast('Questo non sembra il link di una bacheca: deve contenere /b/ oppure /v/.'); document.getElementById('linkBacheca')?.focus(); return; }
+    location.href = '/' + m[1] + '/' + m[2];
+  },
   'rinomina'() {
     const nome = window.prompt('Come vuoi chiamare la bacheca?', S.dati.nome);
     if (nome === null || !nome.trim() || nome.trim() === S.dati.nome) return;

@@ -90,3 +90,23 @@ test('codice di invito, dati non validi e limiti', async () => {
   const m = await chiama('GET', '/manifest/b/' + c.corpo.modifica + '?nome=Casa');
   assert.equal(m.corpo.start_url, '/b/' + c.corpo.modifica);
 });
+
+test('la pagina di una bacheca porta il suo manifest e il suo nome (per "Aggiungi a schermata Home")', async () => {
+  const fs = await import('node:fs');
+  const indice = fs.readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+  const ASSETS = { fetch: async (req) => new URL(req.url).pathname === '/' ? new Response(indice, { headers: { 'content-type': 'text/html' } }) : new Response('no', { status: 404 }) };
+  const { chiama } = server({ ASSETS });
+  const c = await chiama('POST', '/api/bacheche', { nome: 'Casa "di" mamma' });
+  const b = await chiama('GET', '/b/' + c.corpo.modifica);
+  assert.equal(b.stato, 200);
+  assert.ok(b.corpo.includes('<link id="manifest" rel="manifest" href="/manifest/b/' + c.corpo.modifica + '?nome=Casa%20%22di%22%20mamma">'));
+  assert.ok(b.corpo.includes('<meta name="apple-mobile-web-app-title" content="Casa &quot;di&quot; mamma">'));
+  const v = await chiama('GET', '/v/' + c.corpo.lettura);
+  assert.ok(v.corpo.includes('href="/manifest/v/' + c.corpo.lettura + '?nome='));
+  // link sconosciuto: la pagina si apre lo stesso (sarà l'app a dire che non esiste), con il manifest giusto
+  const x = await chiama('GET', '/b/' + 'x'.repeat(24));
+  assert.equal(x.stato, 200);
+  assert.ok(x.corpo.includes('href="/manifest/b/' + 'x'.repeat(24) + '"'));
+  const m = await chiama('GET', '/manifest/b/' + c.corpo.modifica + '?nome=Casa');
+  assert.equal((typeof m.corpo === 'string' ? JSON.parse(m.corpo) : m.corpo).start_url, '/b/' + c.corpo.modifica);
+});
