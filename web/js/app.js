@@ -2,6 +2,7 @@
 import { S, suRidisegna, render, apri, ricarica, aggiornaIndicatore, puoModificare } from './stato.js';
 import { api } from './api.js';
 import { $, toast } from './ui.js';
+import { icona } from './disegni.js';
 import { vistaHome, vistaErrore, vistaOggi, vistaPromemoria, vistaNuovo, vistaAuto, vistaCalendario, vistaCondividi, AZIONI, LEGAMI, importaFile } from './viste.js';
 import { vistaEditor, apriEditor, chiudiEditor, AZIONI_EDITOR, LEGAMI_EDITOR, dopoInput } from './editor.js';
 
@@ -28,6 +29,7 @@ function ridisegna() {
   const vista = $('#vista');
   const schede = $('#schede');
   const titolo = $('#titolo'), titoloLink = $('#titoloLink');
+  $('#vaiHome').classList.toggle('hidden', !m);
   if (!m) {
     titolo.textContent = 'Nomesmentego'; titoloLink.href = '/';
     $('#rinomina').classList.add('hidden');
@@ -52,6 +54,7 @@ function ridisegna() {
   aggiornaIndicatore();
 }
 suRidisegna(ridisegna);
+$('#vaiHomeIcona').outerHTML = icona('casa', 'mini');
 
 /* ---------- eventi ---------- */
 document.addEventListener('click', async (ev) => {
