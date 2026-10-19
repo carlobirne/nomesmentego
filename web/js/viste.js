@@ -2,7 +2,7 @@
 import { S, modifica, render, puoModificare, oggi } from './stato.js';
 import { api, recenti, dimentica, ricorda } from './api.js';
 import { esc, attr, chip, toast, copia, condividi, scarica, caricaScript, testoSu, COLORI } from './ui.js';
-import { icona, ICONE as DISEGNI, SCENE } from './disegni.js';
+import { icona, ICONE as DISEGNI, SCENE, marchioCalendario } from './disegni.js';
 import { normalizza, nuovoId } from '../core/modello.js';
 import { tuttiGliAvvisi, agenda, prossime, segnaFatto, riassunto, settimanaDi, nomiVoci, eScadenza, giaFatta, scadenzaAttuale } from '../core/motore.js';
 import { generaICS } from '../core/ics.js';
@@ -332,20 +332,21 @@ export function vistaCondividi() {
   let h = '<section class="card"><h2>' + icona('calendario', 'titolo') + 'Calendario</h2>' +
     '<p>Aggiungi la bacheca al calendario del telefono <b>una volta sola</b>: da lì in poi gli avvisi arrivano come quelli degli appuntamenti, e le modifiche fatte qui si aggiornano da sole.</p>' +
     '<div class="stack">' +
-    '<a class="btn primary big" href="' + esc(linkWebcal()) + '">Apple Calendar</a>' +
-    '<a class="btn primary big" href="' + esc(linkGoogle()) + '" target="_blank" rel="noopener">Google Calendar</a>' +
+    '<a class="btn primary big" href="' + esc(linkWebcal()) + '">' + marchioCalendario('apple') + 'Apple Calendar</a>' +
+    '<a class="btn primary big" href="' + esc(linkGoogle()) + '" target="_blank" rel="noopener">' + marchioCalendario('google') + 'Google Calendar</a>' +
     '<p class="small muted" style="margin:-4px 0 0">Hai il <b>Calendario Samsung</b> o un altro calendario Android? Passa da Google Calendar: la bacheca compare poi anche lì. Se dopo l\'aggiunta non vedi gli eventi, segui "Come funziona, passo per passo" qui sotto.</p>' +
-    '<button class="btn" data-act="copia" data-testo="' + esc(linkFeed()) + '">Copia l\'indirizzo per un altro calendario</button></div>' +
+    '</div>' +
     '<details class="altro"><summary>Come funziona, passo per passo</summary>' +
     '<h3 style="margin-top:8px">Apple Calendar (iPhone, iPad, Mac)</h3><ol class="passi-guida"><li>Tocca <b>Apple Calendar</b> e conferma con <b>Iscriviti</b>.</li><li>Controlla che "Rimuovi avvisi" sia <b>disattivato</b>, poi tocca <b>Aggiungi</b>.</li></ol>' +
     '<h3>Google Calendar</h3><p class="small">Dal telefono Google non sempre completa l\'aggiunta di un calendario tramite link (a volte non dà errori ma non aggiunge niente). Il modo sicuro è farlo <b>una volta da un computer</b>:</p>' +
     '<ol class="passi-guida"><li>Sul computer apri <b>calendar.google.com</b> con lo stesso account Google del telefono.</li>' +
-    '<li>A sinistra, accanto ad <b>Altri calendari</b>, premi <b>+</b> › <b>Da URL</b>, incolla l\'indirizzo copiato qui sopra e premi <b>Aggiungi calendario</b>.</li>' +
+    '<li>Copia l\'indirizzo della bacheca: <button class="btn piccolo" data-act="copia" data-testo="' + esc(linkFeed()) + '">Copia l\'indirizzo</button> (o mandatelo sul computer).</li>' +
+    '<li>A sinistra, accanto ad <b>Altri calendari</b>, premi <b>+</b> › <b>Da URL</b>, incolla l\'indirizzo e premi <b>Aggiungi calendario</b>.</li>' +
     '<li>Sul telefono, nell\'app Google Calendar: menu › <b>Impostazioni</b> › tocca il calendario "' + esc(d.nome) + '" e attiva <b>Sincronizza</b>; poi nel menu controlla che sia spuntato.</li>' +
     '<li>Sempre nelle impostazioni di quel calendario, in <b>Notifiche</b>, scegli "All\'inizio dell\'evento": gli eventi sono già all\'ora dell\'avviso.</li></ol>' +
     '<p class="small muted">La prima volta Google può metterci da qualche minuto ad alcune ore a leggere il calendario, e poi lo aggiorna ogni qualche ora.</p>' +
     '<h3>Calendario Samsung (e altri calendari Android)</h3><p class="small">Il Calendario Samsung non si abbona a un link, ma mostra i calendari del tuo account Google: basta passare da lì.</p>' +
-    '<ol class="passi-guida"><li>Aggiungi la bacheca a Google Calendar dal computer, come nei punti 1 e 2 qui sopra, con l\'account Google che usi sul telefono.</li>' +
+    '<ol class="passi-guida"><li>Aggiungi la bacheca a Google Calendar dal computer, come nei punti 1, 2 e 3 qui sopra, con l\'account Google che usi sul telefono.</li>' +
     '<li>Sempre dal computer, accanto al calendario "' + esc(d.nome) + '" premi i tre puntini › <b>Impostazioni e condivisione</b> › <b>Notifiche evento</b> e aggiungi una notifica a <b>0 minuti</b>: gli eventi sono già all\'ora dell\'avviso.</li>' +
     '<li>Sul telefono apri il Calendario Samsung, menu › <b>Gestisci calendari</b>: controlla che ci sia l\'account Google e che "' + esc(d.nome) + '" sia acceso. Se l\'account non c\'è, aggiungilo da Impostazioni del telefono › <b>Account e backup</b> › <b>Gestisci account</b>.</li></ol>' +
     '<p class="small">Allo stesso modo funzionano gli altri calendari che mostrano l\'account Google, per esempio quelli dei telefoni Xiaomi, Redmi e OnePlus.</p>' +
