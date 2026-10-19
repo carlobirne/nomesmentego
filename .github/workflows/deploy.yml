@@ -104,12 +104,28 @@ jobs:
           # stesso segreto calcolato dal Worker (worker/telegram.js, segretoWebhook)
           SEGRETO=$(printf 'nomesmentego-webhook:%s' "$TELEGRAM_BOT_TOKEN" | sha256sum | cut -c1-48)
           API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
-          curl -fsS "$API/setWebhook" -H 'content-type: application/json' \
-            -d "{\"url\":\"$URL_APP/telegram/webhook\",\"secret_token\":\"$SEGRETO\",\"allowed_updates\":[\"message\",\"callback_query\",\"my_chat_member\"],\"drop_pending_updates\":true}" > /dev/null
-          curl -fsS "$API/setMyCommands" -H 'content-type: application/json' \
-            -d '{"commands":[{"command":"oggi","description":"Cosa c'"'"'è da ricordare oggi"},{"command":"stop","description":"Non ricevere più avvisi qui"}],"language_code":"it"}' > /dev/null
-          curl -fsS "$API/setMyCommands" -H 'content-type: application/json' \
-            -d '{"commands":[{"command":"oggi","description":"Cosa c'"'"'è da ricordare oggi"},{"command":"stop","description":"Non ricevere più avvisi qui"}]}' > /dev/null
+          # chiamata alle Bot API: mostra il motivo dell'errore (la "description" di Telegram)
+          # e riprova; un errore qui non deve far fallire la pubblicazione, già fatta
+          tg() {
+            for i in 1 2 3; do
+              R=$(curl -sS "$API/$1" -H 'content-type: application/json' -d "$2" 2>&1 || true)
+              if printf '%s' "$R" | grep -q '"ok":true'; then return 0; fi
+              echo "Telegram $1, tentativo $i: $(printf '%s' "$R" | node -pe 'const t=require("fs").readFileSync(0,"utf8"); try { JSON.parse(t).description } catch { t.slice(0, 200) }')"
+              sleep 5
+            done
+            return 1
+          }
+          OK=1
+          tg setWebhook "{\"url\":\"$URL_APP/telegram/webhook\",\"secret_token\":\"$SEGRETO\",\"allowed_updates\":[\"message\",\"callback_query\",\"my_chat_member\"],\"drop_pending_updates\":true}" || OK=0
+          COMANDI='{"commands":[{"command":"oggi","description":"Cosa c'"'"'è da ricordare oggi"},{"command":"stop","description":"Non ricevere più avvisi qui"}]'
+          tg setMyCommands "$COMANDI,\"language_code\":\"it\"}" || OK=0
+          tg setMyCommands "$COMANDI}" || OK=0
+          if [ "$OK" = 0 ]; then
+            echo "::warning title=Bot Telegram::Non sono riuscito a registrare il webhook o i comandi su Telegram (motivo qui sopra). L'app è pubblicata; il bot continua a usare la registrazione precedente. Rilancia la pubblicazione più tardi."
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Bot Telegram: ⚠️ registrazione del webhook non riuscita, vedi il log" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           NOME=$(curl -fsS "$API/getMe" | node -pe 'JSON.parse(require("fs").readFileSync(0)).result.username')
           echo "Bot Telegram collegato: @$NOME"
           echo "" >> "$GITHUB_STEP_SUMMARY"
