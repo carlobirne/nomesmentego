@@ -355,10 +355,6 @@ export function vistaCondividi() {
   h += vistaTelegram();
   h += vistaEmail();
 
-  h += '<section class="card"><h2>' + icona('casa', 'titolo') + 'Sulla schermata Home</h2><p>Così apri la bacheca come un\'app.</p><ul class="passi-guida">' +
-    '<li><b>iPhone</b> (Safari): tocca Condividi › <b>Aggiungi alla schermata Home</b>.</li>' +
-    '<li><b>Android</b> (Chrome): menu con i tre puntini › <b>Aggiungi a schermata Home</b> (o "Installa app").</li></ul></section>';
-
   h += '<section class="card"><h2>' + icona('uccello', 'titolo') + 'Condividi la bacheca</h2>';
   if (mod) {
     h += '<h3>Link per modificare</h3><p class="small muted">Chi lo ha può vedere e <b>cambiare</b> tutto: mandalo solo a chi ti fidi.</p>' +
@@ -442,14 +438,26 @@ async function caricaPush() {
   render();
 }
 
+/** "App nella home": prima l'icona sulla schermata Home, poi le notifiche dell'app. */
 function vistaPush() {
   const p = S.ui.push;
-  if (!p) { caricaPush(); return ''; }
-  let h = '<section class="card"><h2>' + icona('campanella', 'titolo') + 'Notifiche dell\'app</h2>' +
-    '<p>Senza installare niente: gli avvisi arrivano come notifiche su questo telefono, all\'ora di ogni promemoria.</p>';
+  if (!p) caricaPush();
+  let h = '<section class="card"><h2>' + icona('casa', 'titolo') + 'App nella home</h2>' +
+    '<p>Apri la bacheca come un\'app e ricevi gli avvisi come notifiche, all\'ora di ogni promemoria. Senza installare niente dagli store.</p>' +
+    '<p class="small muted">Serve sul telefono (o sul tablet). Sul computer puoi saltare il punto 1: le notifiche si attivano direttamente dal browser.</p>';
+  h += '<div class="passo" style="margin-top:14px"><span class="n">1</span><h3 style="margin:0">Aggiungi la bacheca alla schermata Home</h3></div>';
+  if (inStandalone()) h += '<p class="small"><b>Fatto:</b> stai già usando la bacheca dall\'icona sulla schermata Home.</p>';
+  else {
+    h += '<ul class="passi-guida">' +
+      '<li><b>iPhone</b> (Safari): tocca Condividi › <b>Aggiungi alla schermata Home</b>.</li>' +
+      '<li><b>Android</b> (Chrome): menu con i tre puntini › <b>Aggiungi a schermata Home</b> (o "Installa app").</li></ul>' +
+      '<p class="small muted">Poi apri la bacheca da quell\'icona e torna qui per il punto 2.</p>';
+  }
+  h += '<div class="passo" style="margin-top:14px"><span class="n">2</span><h3 style="margin:0">Attiva le notifiche</h3></div>';
+  if (!p) return h + '<p class="muted small">Caricamento…</p></section>';
   if (!pushSupportato() || (suIOS() && !inStandalone())) {
     h += suIOS()
-      ? '<p class="notice small">Su <b>iPhone e iPad</b> le notifiche funzionano solo dall\'icona sulla schermata Home (iOS 16.4 o successivo): in Safari tocca <b>Condividi › Aggiungi alla schermata Home</b>, apri la bacheca da quell\'icona e torna qui.</p>'
+      ? '<p class="notice small">Su <b>iPhone e iPad</b> le notifiche funzionano solo aprendo la bacheca dall\'icona sulla schermata Home (punto 1, iOS 16.4 o successivo).</p>'
       : '<p class="notice small">Questo browser non supporta le notifiche. Su Android usa <b>Chrome</b>; in alternativa usa Telegram o l\'email qui sotto.</p>';
   } else if (Notification.permission === 'denied') {
     h += '<p class="notice attenzione small">Le notifiche per questo sito sono bloccate. Riattivale dalle impostazioni del browser (icona accanto all\'indirizzo › Autorizzazioni › Notifiche), poi torna qui.</p>';
