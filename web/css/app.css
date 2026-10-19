@@ -69,10 +69,13 @@ img.marchio-ico.titolo{width:28px;height:36px;vertical-align:-8px;margin-right:6
 
 /* ---------- testata ---------- */
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:10px 0 0}
-.title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;min-height:48px}
+.title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px}
 .app-title{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mano);font-weight:700;font-size:clamp(1.9rem,7vw,2.4rem);line-height:1;margin:0;text-decoration:none;min-width:0;overflow-wrap:anywhere}
 .stato-salvataggio{font-size:.85rem;color:var(--muted);font-weight:700}
-.titolo-gruppo{display:flex;align-items:center;gap:6px;min-width:0}
+.testata-destra{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-left:auto;flex:0 0 auto}
+.vai-home{display:inline-flex;align-items:center;gap:4px;min-height:40px;padding:4px 12px 4px 8px;border:2px solid var(--line);border-radius:var(--r3);background:var(--surface);color:var(--ink);font-weight:800;font-size:.92rem;text-decoration:none;white-space:nowrap}
+.vai-home svg.disegno{width:26px;height:26px}
+.titolo-gruppo{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 auto}
 .rinomina{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:2px solid var(--line);background:var(--surface);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0}
 .rinomina svg{width:24px;height:24px}
 .stato-salvataggio.errore{color:var(--red)}
