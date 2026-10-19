@@ -147,8 +147,8 @@ aggiungi il calendario al telefono e manda il link a chi serve.
 
 ## Notifiche dell'app (niente da configurare)
 
-Nella scheda **Notifiche e condivisione › Notifiche dell'app** tocca **Attiva le notifiche su questo telefono** e
-rispondi **Consenti**. Funziona anche con il link di sola lettura, quindi chiunque abbia la bacheca può attivarle
+Nella scheda **Notifiche e condivisione › App nella home**: (1) aggiungi la bacheca alla schermata Home, poi
+(2) tocca **Attiva le notifiche su questo telefono** e rispondi **Consenti**. Funziona anche con il link di sola lettura, quindi chiunque abbia la bacheca può attivarle
 sul proprio telefono.
 - **Android**: con Chrome (o Edge, Samsung Internet, Firefox) direttamente dal browser.
 - **iPhone/iPad**: solo dall'icona sulla schermata Home (Safari › Condividi › Aggiungi alla schermata Home),
