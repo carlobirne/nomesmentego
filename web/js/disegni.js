@@ -96,6 +96,18 @@ export const ICONE = {
     `<path d="M24 10V5.5M15 12.5L12.5 8.5M33 12.5L35.5 8.5"/>` },
 };
 
+/** Marchi dei calendari, ridisegnati nello stesso stile (non compaiono tra i disegni dei promemoria). */
+const MARCHI = {
+  apple: `<path d="M24.5 15.5C24 11 27 7.8 31 7.2C31.5 11.6 28.6 14.8 24.5 15.5Z" fill="${V}"/>` +
+    `<path d="M24 17.5C21 15 12.5 14 12 25.5C11.5 34 17 41.5 20.8 41.5C22.6 41.5 23 40.6 24 40.6C25 40.6 25.4 41.5 27.2 41.5C30.4 41.5 34.2 36.8 35.8 32.6C31.2 30.6 30.6 23.2 35 20.6C32.6 16.6 27.2 15 24 17.5Z" fill="${N}"/>` +
+    occhio(19.8, 26.5, 4.6),
+  google: `<g stroke-width="6.5" stroke-linecap="butt"><path d="M32.49 15.51A12 12 0 0 0 13.61 18" stroke="#e8231c"/>` +
+    `<path d="M13.61 18A12 12 0 0 0 13.61 30" stroke="#f6c700"/><path d="M13.61 30A12 12 0 0 0 32.49 32.49" stroke="#2db04b"/>` +
+    `<path d="M32.49 32.49A12 12 0 0 0 36 24H24.5" stroke="#2e5fa8"/></g>`,
+};
+export const marchioCalendario = (k) =>
+  `<span class="logo-servizio" aria-hidden="true"><svg class="disegno" viewBox="0 0 48 48" focusable="false"><g fill="none" stroke="${N}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${MARCHI[k]}</g></svg></span>`;
+
 /** SVG inline di un'icona. */
 export function icona(chiave, cls = '') {
   const i = ICONE[chiave] || ICONE.campanella;
