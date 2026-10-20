@@ -96,7 +96,7 @@ test('vecchie scadenze: diventano promemoria con il flag Scadenza', () => {
     quando: { tipo: 'scadenza', scadenza: '2027-11-30', ripeti: { ogni: 2, unita: 'anni', da: 'fatto', fineMese: true } },
     avvisi: [{ prima: 20, unita: 'giorni', ora: '09:00' }, { prima: 1, unita: 'mesi', ora: '09:00' }] }]).promemoria[0];
   assert.equal(p.quando.tipo, 'annuale');
-  assert.deepEqual(p.scadenza, { attiva: true, ogni: 3, fattoFino: '2027-11-29' });
+  assert.deepEqual(p.scadenza, { attiva: true, ogni: 3, fino: 365, fattoFino: '2027-11-29' });
   assert.deepEqual(date(occorrenze(p, '2026-01-01', '2032-12-31')), ['2027-11-30', '2029-11-30', '2031-11-30']);
   const av = avvisi(p, '2027-01-01', '2027-12-31');
   assert.deepEqual(av.map((a) => a.data).slice(0, 3), ['2027-10-30', '2027-11-10', '2027-12-03']);
@@ -277,4 +277,18 @@ test('modello Medicine: settimana con le voci delle medicine più comuni', () =>
   assert.equal(p.quando.tipo, 'rotazione');
   assert.deepEqual(p.voci.map((v) => v.nome), ['Vitamina D', 'Antibiotico', 'Integratori', 'Puntura', 'Collirio']);
   assert.equal(bacheca([{ modello: 'boh' }]).promemoria[0].modello, '');
+});
+
+test('scadenza con un limite: dopo N giorni gli avvisi si fermano e si considera fatta', () => {
+  const [p] = bacheca([{ id: 'tari', titolo: 'TARI', quando: { tipo: 'una-volta', date: ['2026-10-16'] }, avvisi: [{ prima: 0, unita: 'giorni', ora: '10:00' }],
+    scadenza: { attiva: true, ogni: 2, fino: 7 } }]).promemoria;
+  assert.equal(p.scadenza.fino, 7);
+  assert.deepEqual(avvisi(p, '2026-10-16', '2026-11-30').map((a) => a.data), ['2026-10-16', '2026-10-18', '2026-10-20', '2026-10-22']);
+  assert.equal(scadenzaAttuale(p, '2026-10-23').data, '2026-10-16'); // fino al settimo giorno è ancora da fare
+  assert.equal(scadenzaAttuale(p, '2026-10-24'), null); // poi si considera fatta
+  assert.match(riassunto(p), /ti avviso ogni 2 giorni finché non lo premi, per al massimo 7 giorni\.$/);
+  // un limite più corto dell'intervallo non avrebbe senso: si allunga
+  const [q] = bacheca([{ quando: { tipo: 'giornaliero' }, scadenza: { attiva: true, ogni: 14, fino: 3 } }]).promemoria;
+  assert.equal(q.scadenza.fino, 14);
+  assert.equal(bacheca([{ scadenza: { attiva: true, fino: 999 } }]).promemoria[0].scadenza.fino, 365);
 });

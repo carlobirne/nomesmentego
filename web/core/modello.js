@@ -7,6 +7,8 @@ export const VERSIONE = 2;
 export const TIPI = ['una-volta', 'giornaliero', 'settimanale', 'rotazione', 'mensile', 'annuale'];
 /** giorni tra un avviso e l'altro quando una scadenza è passata senza "Fatto" */
 export const SCADENZA_OGNI = [1, 2, 3, 4, 5, 7, 10, 14, 30];
+/** per quanti giorni al massimo, dopo la data, arrivano quegli avvisi: poi la scadenza si considera fatta */
+export const SCADENZA_FINO = [1, 2, 3, 5, 7, 10, 14, 21, 30, 45, 60, 90, 180, 365];
 export const UNITA = ['giorni', 'settimane', 'mesi', 'anni'];
 /** da quale modello pronto è nato un promemoria (serve per gli esempi adatti nell'editor) */
 export const MODELLI_ID = ['rifiuti', 'auto', 'compleanno', 'medicina', 'personalizzato'];
@@ -127,7 +129,10 @@ function normalizzaScadenza(p, quandoGrezzo, oggiISO) {
   if (vecchia && !fattoFino && valida(quandoGrezzo.scadenza)) fattoFino = piuGiorni(quandoGrezzo.scadenza, -1);
   if (attiva && !fattoFino) fattoFino = piuGiorni(oggiISO, -1);
   const ogni = SCADENZA_OGNI.includes(Number(s.ogni)) ? Number(s.ogni) : (vecchia || p.insisti ? 3 : 1);
-  return { attiva, ogni, fattoFino };
+  // senza scelta (o dai dati di prima): al massimo un anno; mai meno di un intervallo, se no non arriverebbe niente
+  let fino = SCADENZA_FINO.includes(Number(s.fino)) ? Number(s.fino) : 365;
+  if (fino < ogni) fino = SCADENZA_FINO.find((n) => n >= ogni);
+  return { attiva, ogni, fino, fattoFino };
 }
 
 function normalizzaPromemoria(p, gruppi, oggiISO) {
