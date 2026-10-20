@@ -233,7 +233,7 @@ async function paginaBacheca(env, url, tipo, token, archivio) {
 
 export default {
   fetch: (request, env) => gestisci(request, env),
-  // Cron Trigger (ogni 5 minuti, vedi wrangler.jsonc): manda gli avvisi su Telegram, notifiche dell'app ed email
+  // Cron Trigger (ogni minuto, vedi wrangler.jsonc): manda gli avvisi su Telegram, notifiche dell'app ed email
   scheduled: (controller, env, ctx) => {
     const archivio = new ArchivioD1(env.DB), adesso = new Date(controller.scheduledTime);
     const giro = (nome, p) => p.then((r) => { if (r.inviati) console.log(nome + ': inviati', r.inviati); }).catch((e) => console.error(nome, e));

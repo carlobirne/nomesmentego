@@ -58,7 +58,7 @@ flowchart TB
   subgraph CF["Cloudflare, piano gratuito"]
     W["Worker nomesmentego<br/>pagine · API · feed .ics · webhook"]
     D1[("Database D1<br/>bacheche e copie<br/>chat, telefoni, email")]
-    CRON["Cron ogni 5 minuti<br/>avvisi da mandare"]
+    CRON["Cron ogni minuto<br/>avvisi da mandare"]
   end
   subgraph E["Servizi esterni, solo se attivati"]
     TAPI["Telegram Bot API"]
@@ -191,7 +191,7 @@ come mittente, le prime email possono finire nello spam: segnale come "non spam"
 4. Nell'app, scheda **Notifiche e condivisione › Telegram**: **Collega la mia chat Telegram** apre il bot,
    tocca **Avvia** e torna nell'app. Per un gruppo: **Collega un gruppo Telegram** e scegli il gruppo.
 
-Come funziona: ogni 5 minuti un *Cron Trigger* del Worker calcola gli avvisi scattati dall'ultimo giro (nell'ora
+Come funziona: ogni minuto un *Cron Trigger* del Worker calcola gli avvisi scattati dall'ultimo giro (nell'ora
 locale della bacheca) e li manda alle chat collegate. Lo stesso giro manda le notifiche dell'app e le email. Il tasto **Fatto** compare solo nelle chat collegate da chi
 ha il link di modifica. Se una chat blocca il bot o lo toglie dal gruppo, viene scollegata da sola.
 Comandi del bot: `/oggi` (cosa c'è oggi) e `/stop` (smetti di ricevere).

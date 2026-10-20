@@ -20,7 +20,7 @@
       "migrations_dir": "migrations"
     }
   ],
-  // ogni 5 minuti il Worker manda gli avvisi: Telegram, notifiche dell'app, email
-  "triggers": { "crons": ["*/5 * * * *"] },
+  // ogni minuto il Worker manda gli avvisi: Telegram, notifiche dell'app, email
+  "triggers": { "crons": ["* * * * *"] },
   "observability": { "enabled": true }
 }
