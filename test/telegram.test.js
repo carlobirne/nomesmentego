@@ -154,3 +154,22 @@ test('senza token del bot Telegram è spento e il client reale chiama le Bot API
   const ko = creaTelegram('T', async () => new Response(JSON.stringify({ ok: false, error_code: 403, description: 'Forbidden' }), { status: 403 }));
   await assert.rejects(ko.invia(1, 'x'), (e) => e.codice === 403);
 });
+
+test('la stessa chat riceve gli avvisi di più bacheche', async () => {
+  const a = await ambiente();
+  const altra = (await a.chiama('POST', '/api/bacheche', { dati: { versione: 2, nome: 'Nonna', promemoria: [
+    { id: 'gocce', titolo: 'Gocce della nonna', quando: { tipo: 'giornaliero', inizio: '2020-01-01' }, avvisi: [{ prima: 0, unita: 'giorni', ora: '08:00' }] }] } })).corpo;
+  for (const tok of [a.modifica, altra.modifica]) {
+    const col = await a.chiama('POST', '/api/b/' + tok + '/telegram/collega');
+    await a.messaggio(111, '/start ' + codiceDa(col.corpo.link));
+  }
+  assert.match(a.tg.inviati.at(-1).testo, /avvisi di <b>Nonna<\/b>/);
+  for (const i of a.archivio.telegram.iscrizioni) i.ultimo = '2030-01-01T07:55';
+  a.tg.inviati.length = 0;
+  await inviaAvvisi({ archivio: a.archivio, telegram: a.tg, adesso: new Date('2030-01-01T07:10:00Z') });
+  const testi = a.tg.inviati.filter((m) => m.chat === '111').map((m) => m.testo).join('\n');
+  assert.match(testi, /Prendi la pastiglia/); // dalla bacheca Casa
+  assert.match(testi, /Gocce della nonna[\s\S]*Nonna/); // dalla bacheca Nonna, col suo nome
+  await a.messaggio(111, '/oggi');
+  assert.match(a.tg.inviati.at(-1).testo, /<b>Casa<\/b>[\s\S]*<b>Nonna<\/b>|<b>Nonna<\/b>[\s\S]*<b>Casa<\/b>/);
+});
