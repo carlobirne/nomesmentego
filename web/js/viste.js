@@ -334,6 +334,8 @@ export function vistaCondividi() {
     '<div class="stack">' +
     '<a class="btn primary big" href="' + esc(linkWebcal()) + '">' + marchioCalendario('apple') + 'Apple Calendar</a>' +
     '<a class="btn primary big" href="' + esc(linkGoogle()) + '" target="_blank" rel="noopener">' + marchioCalendario('google') + 'Google Calendar</a>' +
+    '<p class="notice attenzione small" style="margin:0"><b>Importante per Google:</b> dopo averla aggiunta, sul telefono apri l\'app Google Calendar › menu ☰ › <b>Impostazioni</b> › <b>Altri calendari</b> (Other calendars) › tocca "' + esc(d.nome) + '" e attiva <b>Sincronizza</b>. Quando il calendario si collega dall\'app spesso la sincronizzazione parte spenta, e gli eventi non compaiono.</p>' +
+    (suMobile() ? '<p class="small" style="margin:0">Dal telefono Google a volte non completa l\'aggiunta (non dà errori ma non aggiunge niente). Se dopo qualche minuto in <b>Altri calendari</b> non trovi "' + esc(d.nome) + '", aprilo da un computer: <button class="btn piccolo" data-act="condividi" data-url="' + esc(linkGoogle()) + '">Manda il link al computer</button> e aprilo lì con lo stesso account Google.</p>' : '') +
     '<p class="small muted" style="margin:-4px 0 0">Hai il <b>Calendario Samsung</b> o un altro calendario Android? Passa da Google Calendar: la bacheca compare poi anche lì. Se dopo l\'aggiunta non vedi gli eventi, segui "Come funziona, passo per passo" qui sotto.</p>' +
     '</div>' +
     '<details class="altro"><summary>Come funziona, passo per passo</summary>' +
@@ -342,13 +344,14 @@ export function vistaCondividi() {
     '<ol class="passi-guida"><li>Sul computer apri <b>calendar.google.com</b> con lo stesso account Google del telefono.</li>' +
     '<li>Copia l\'indirizzo della bacheca: <button class="btn piccolo" data-act="copia" data-testo="' + esc(linkFeed()) + '">Copia l\'indirizzo</button> (o mandatelo sul computer).</li>' +
     '<li>A sinistra, accanto ad <b>Altri calendari</b>, premi <b>+</b> › <b>Da URL</b>, incolla l\'indirizzo e premi <b>Aggiungi calendario</b>.</li>' +
-    '<li>Sul telefono, nell\'app Google Calendar: menu › <b>Impostazioni</b> › tocca il calendario "' + esc(d.nome) + '" e attiva <b>Sincronizza</b>; poi nel menu controlla che sia spuntato.</li>' +
+    '<li>Sul telefono, nell\'app Google Calendar: menu ☰ › <b>Impostazioni</b> › <b>Altri calendari</b> (Other calendars) › tocca "' + esc(d.nome) + '" e attiva <b>Sincronizza</b> (spesso è spenta); poi nel menu ☰ controlla che sia spuntato.</li>' +
     '<li>Sempre nelle impostazioni di quel calendario, in <b>Notifiche</b>, scegli "All\'inizio dell\'evento": gli eventi sono già all\'ora dell\'avviso.</li></ol>' +
     '<p class="small muted">La prima volta Google può metterci da qualche minuto ad alcune ore a leggere il calendario, e poi lo aggiorna ogni qualche ora.</p>' +
     '<h3>Calendario Samsung (e altri calendari Android)</h3><p class="small">Il Calendario Samsung non si abbona a un link, ma mostra i calendari del tuo account Google: basta passare da lì.</p>' +
     '<ol class="passi-guida"><li>Aggiungi la bacheca a Google Calendar dal computer, come nei punti 1, 2 e 3 qui sopra, con l\'account Google che usi sul telefono.</li>' +
     '<li>Sempre dal computer, accanto al calendario "' + esc(d.nome) + '" premi i tre puntini › <b>Impostazioni e condivisione</b> › <b>Notifiche evento</b> e aggiungi una notifica a <b>0 minuti</b>: gli eventi sono già all\'ora dell\'avviso.</li>' +
-    '<li>Sul telefono apri il Calendario Samsung, menu › <b>Gestisci calendari</b>: controlla che ci sia l\'account Google e che "' + esc(d.nome) + '" sia acceso. Se l\'account non c\'è, aggiungilo da Impostazioni del telefono › <b>Account e backup</b> › <b>Gestisci account</b>.</li></ol>' +
+    '<li>Sul telefono apri il Calendario Samsung, menu › <b>Gestisci calendari</b>: controlla che ci sia l\'account Google e che "' + esc(d.nome) + '" sia acceso. Se l\'account non c\'è, aggiungilo da Impostazioni del telefono › <b>Account e backup</b> › <b>Gestisci account</b>.</li>' +
+    '<li>Se non compare ancora, e sul telefono c\'è anche l\'app Google Calendar, attiva lì <b>Sincronizza</b> per "' + esc(d.nome) + '" (Impostazioni › Altri calendari), come al punto 4 di Google.</li></ol>' +
     '<p class="small">Allo stesso modo funzionano gli altri calendari che mostrano l\'account Google, per esempio quelli dei telefoni Xiaomi, Redmi e OnePlus.</p>' +
     '<p class="small muted">Non vuoi abbonarti? <button class="btn ghost piccolo" data-act="ics-scarica">Scarica un file .ics</button> con i prossimi 6 mesi (non si aggiorna da solo).</p></details></section>';
 
@@ -412,6 +415,7 @@ const chiaveDi = (canale, x) => (canale === 'telegram' ? x.chat : x.id);
 
 /* ---------- notifiche dell'app (Web Push) ---------- */
 const pushSupportato = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const suMobile = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || suIOS();
 const suIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const inStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 function nomeDispositivo() {
