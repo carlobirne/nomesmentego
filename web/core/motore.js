@@ -143,6 +143,8 @@ export function prossime(p, da, quante = 1, orizzonte = 800) {
 
 const MAX_PRIMA = { giorni: 1, settimane: 7, mesi: 31 };
 const INSISTI_MAX = 365; // una scadenza dimenticata si ricorda al massimo per un anno
+/** per quanti giorni dopo la data si insiste: poi quella scadenza si considera fatta */
+const durata = (p) => Math.min(p.scadenza?.fino || INSISTI_MAX, INSISTI_MAX);
 export const eScadenza = (p) => !!p.scadenza?.attiva;
 /** Data già segnata come fatta (o precedente all'attivazione della scadenza). */
 export const giaFatta = (p, data) => eScadenza(p) && !!p.scadenza.fattoFino && data <= p.scadenza.fattoFino;
@@ -185,10 +187,11 @@ export function avvisi(p, da, a) {
   if (eScadenza(p)) {
     const n = p.scadenza.ogni;
     const ora = p.avvisi.length ? p.avvisi[p.avvisi.length - 1].ora : '09:00';
-    const passate = occorrenze(p, piuGiorni(da, -INSISTI_MAX), a).filter((o) => !giaFatta(p, o.data));
+    const max = durata(p);
+    const passate = occorrenze(p, piuGiorni(da, -max), a).filter((o) => !giaFatta(p, o.data));
     passate.forEach((o, i) => {
       const dopo = passate[i + 1]?.data ?? prossime(p, piuGiorni(o.data, 1), 1, 400)[0]?.data;
-      for (let k = n; k <= INSISTI_MAX; k += n) {
+      for (let k = n; k <= max; k += n) {
         const quando = piuGiorni(o.data, k);
         if (quando > a || (dopo && quando >= dopo)) break;
         if (quando < da) continue;
@@ -229,7 +232,8 @@ export function agenda(bacheca, da, a) {
  */
 export function scadenzaAttuale(p, oggiISO) {
   if (!eScadenza(p) || p.pausa) return null;
-  const fino = p.scadenza.fattoFino, limite = piuGiorni(oggiISO, -INSISTI_MAX);
+  // le date più vecchie della durata scelta si considerano fatte
+  const fino = p.scadenza.fattoFino, limite = piuGiorni(oggiISO, -durata(p));
   const da = fino && fino >= limite ? piuGiorni(fino, 1) : limite;
   const arrivate = da <= oggiISO ? occorrenze(p, da, oggiISO) : [];
   if (arrivate.length) return arrivate[arrivate.length - 1];
@@ -246,6 +250,8 @@ export function segnaFatto(p, data) {
 
 /** "ogni giorno" / "ogni 3 giorni" */
 export const ogniGiorni = (n) => (n === 1 ? 'ogni giorno' : 'ogni ' + n + ' giorni');
+/** "per al massimo 30 giorni" / "per al massimo un anno" */
+export const perAlMassimo = (n) => 'per al massimo ' + (n === 365 ? 'un anno' : n === 1 ? '1 giorno' : n + ' giorni');
 
 /* ---------- descrizioni in italiano ---------- */
 
@@ -298,6 +304,6 @@ export function descriviAvviso(a) {
 /** Frase completa: "Ogni martedì. Ti avviso la sera prima alle 19:00." */
 export function riassunto(p) {
   const av = p.avvisi.length ? 'Ti avviso ' + elenco(p.avvisi.map(descriviAvviso)) + '.' : 'Nessun avviso: lo vedi solo nell\'app e nel calendario.';
-  const sc = eScadenza(p) ? ' È una scadenza: se passa senza "Fatto", ti avviso ' + ogniGiorni(p.scadenza.ogni) + ' finché non lo premi.' : '';
+  const sc = eScadenza(p) ? ' È una scadenza: se passa senza "Fatto", ti avviso ' + ogniGiorni(p.scadenza.ogni) + ' finché non lo premi, ' + perAlMassimo(p.scadenza.fino) + '.' : '';
   return descriviQuando(p) + '. ' + av + sc;
 }

@@ -3,8 +3,8 @@
 import { S, modifica, render, oggi } from './stato.js';
 import { esc, toast, testoSu, COLORI } from './ui.js';
 import { sceltaIcone } from './viste.js';
-import { normalizza, nuovoId, SCADENZA_OGNI } from '../core/modello.js';
-import { riassunto, prossime, settimanaDi, descriviQuando, nomiVoci, ogniGiorni } from '../core/motore.js';
+import { normalizza, nuovoId, SCADENZA_OGNI, SCADENZA_FINO } from '../core/modello.js';
+import { riassunto, prossime, settimanaDi, descriviQuando, nomiVoci, ogniGiorni, perAlMassimo } from '../core/motore.js';
 import { GIORNI, GIORNI_NOMI, MESI_NOMI, lunediDi, piuGiorni, fmtGiorno, fmt, valida } from '../core/date.js';
 
 // "Giorni speciali" (festività, recuperi…) per ora è nascosto: si vede solo se un promemoria ne ha già,
@@ -152,7 +152,9 @@ function editorScadenza(p) {
     '<div class="row" style="gap:8px;margin-top:2px"><span>si riceverà un avviso</span>' +
     '<select data-bind="scadenza-ogni" aria-label="Ogni quanti giorni"' + (s.attiva ? '' : ' disabled') + ' style="width:auto;min-width:0;flex:0 0 auto">' +
     SCADENZA_OGNI.map((n) => '<option value="' + n + '"' + (n === s.ogni ? ' selected' : '') + '>' + ogniGiorni(n) + '</option>').join('') + '</select>' +
-    '<span>passata la scadenza finché non si preme <b>Fatto</b>.</span></div>' +
+    '<select data-bind="scadenza-fino" aria-label="Per quanti giorni al massimo"' + (s.attiva ? '' : ' disabled') + ' style="width:auto;min-width:0;flex:0 0 auto">' +
+    SCADENZA_FINO.filter((n) => n >= s.ogni).map((n) => '<option value="' + n + '"' + (n === s.fino ? ' selected' : '') + '>' + perAlMassimo(n) + '</option>').join('') + '</select>' +
+    '<span>passata la scadenza finché non si preme <b>Fatto</b>. Passato il limite, la scadenza si considera fatta e gli avvisi si fermano.</span></div>' +
     (s.attiva ? '<p class="small muted" style="margin:8px 0 0">"Fatto" si preme nella schermata Oggi, accanto al promemoria in "I prossimi promemoria" (o dal messaggio Telegram). Se lo premi in anticipo, gli avvisi di quella data non arrivano più.</p>' : '') +
     '</div>';
 }
@@ -414,7 +416,13 @@ export const LEGAMI_EDITOR = {
     if (s.attiva) s.fattoFino = piuGiorni(oggi(), -1);
     return true;
   },
-  'scadenza-ogni'(el) { S.bozza.scadenza.ogni = +el.value; return true; },
+  'scadenza-ogni'(el) {
+    const s = S.bozza.scadenza;
+    s.ogni = +el.value;
+    if (s.fino < s.ogni) s.fino = SCADENZA_FINO.find((n) => n >= s.ogni); // il limite non può essere più corto di un intervallo
+    return true;
+  },
+  'scadenza-fino'(el) { S.bozza.scadenza.fino = +el.value; return true; },
   'q-anno'(el) {
     const y = Math.round(+el.value);
     if (y >= 2000 && y <= 2100) q().inizio = y + q().inizio.slice(4);
