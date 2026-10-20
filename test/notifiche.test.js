@@ -215,3 +215,21 @@ test('email: i gruppi da ricevere si scelgono già quando si aggiunge l\'indiriz
   assert.ok(a_papa.length >= 1 && a_papa.every((t) => /Bollo/.test(t) && !/pastiglia/.test(t)));
   assert.ok(mandate.some((m) => m.a === 'nonna@example.com' && /pastiglia/.test(m.oggetto + m.testo)));
 });
+
+test('lo stesso telefono riceve le notifiche di più bacheche; disattivarne una non tocca le altre', async () => {
+  const a = await ambiente();
+  const tel = await browser();
+  const altra = (await a.chiama('POST', '/api/bacheche', { dati: { versione: 2, nome: 'Nonna', promemoria: [
+    { id: 'gocce', titolo: 'Gocce della nonna', quando: { tipo: 'giornaliero', inizio: '2020-01-01' }, avvisi: [{ prima: 0, unita: 'giorni', ora: '08:00' }] }] } })).corpo;
+  for (const tok of [a.lettura, altra.lettura]) {
+    assert.equal((await a.chiama('POST', '/api/b/' + tok + '/push', { abbonamento: tel.abbonamento, nome: 'Telefono' })).stato < 300, true);
+  }
+  for (const r of a.archivio.notificheRighe) r.ultimo = '2030-01-01T07:55';
+  await inviaNotifiche({ archivio: a.archivio, adesso: new Date('2030-01-01T07:10:00Z'), fetchFn: a.fetchPush });
+  const titoli = await Promise.all(a.consegne.map(async (c) => { const x = await tel.decifra(c.opz.body); return x.title + ' / ' + x.body; }));
+  assert.ok(titoli.some((t) => /pastiglia/i.test(t)), titoli.join(' | '));
+  assert.ok(titoli.some((t) => /Gocce della nonna/.test(t)), titoli.join(' | '));
+  // tolto da una bacheca, l'altra continua
+  await a.chiama('POST', '/api/b/' + altra.lettura + '/push/via', { endpoint: tel.abbonamento.endpoint });
+  assert.deepEqual(a.archivio.notificheRighe.filter((r) => r.canale === 'push').length, 1);
+});
