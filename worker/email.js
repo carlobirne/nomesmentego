@@ -173,6 +173,12 @@ export async function apiEmail({ request, url, metodo, sotto, azione2, riga, per
       id: nuovoToken(9), bachecaId: riga.id, canale: 'email', destinazione: indirizzo, nome: String(corpo.nome || '').slice(0, 60) || indirizzo,
       stato: 'da-confermare', token: nuovoToken(), origine: url.origin, ultimo: adessoLocale(bacheca.fusoOrario), creata: new Date().toISOString(),
     });
+    // gruppi da ricevere scelti già all'aggiunta (assente o null = tutto)
+    if ('filtro' in corpo) {
+      const filtro = pulisciFiltro(corpo.filtro, bacheca);
+      r.filtro = filtro ? JSON.stringify(filtro) : null;
+      await archivio.aggiornaNotifica(r.id, { filtro: r.filtro });
+    }
     if (r.stato !== 'attivo') {
       try { await mandaConferma(posta, r, bacheca, url.origin); } catch (e) {
         console.error('email di conferma', e);

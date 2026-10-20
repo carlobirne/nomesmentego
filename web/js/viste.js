@@ -359,12 +359,12 @@ export function vistaCondividi() {
   h += '<section class="card"><h2>' + icona('uccello', 'titolo') + 'Condividi la bacheca</h2>';
   if (mod) {
     h += '<h3>Link per modificare</h3><p class="small muted">Chi lo ha può vedere e <b>cambiare</b> tutto: mandalo solo a chi ti fidi.</p>' +
-      '<div class="row"><input class="copia" type="text" readonly value="' + esc(linkModifica()) + '" aria-label="Link per modificare" style="flex:1 1 220px"><button class="btn" data-act="condividi" data-url="' + esc(linkModifica()) + '">Manda</button></div>' +
+      '<div class="row"><input class="copia" type="text" readonly value="' + esc(linkModifica()) + '" aria-label="Link per modificare" style="flex:1 1 220px"><button class="btn" data-act="condividi" data-url="' + esc(linkModifica()) + '">Condividi</button></div>' +
       '<h3 style="margin-top:14px">Link di sola lettura</h3><p class="small muted">Per chi deve solo vedere e ricevere gli avvisi sul calendario.</p>' +
-      '<div class="row"><input class="copia" type="text" readonly value="' + esc(linkLettura()) + '" aria-label="Link di sola lettura" style="flex:1 1 220px"><button class="btn" data-act="condividi" data-url="' + esc(linkLettura()) + '">Manda</button></div>';
+      '<div class="row"><input class="copia" type="text" readonly value="' + esc(linkLettura()) + '" aria-label="Link di sola lettura" style="flex:1 1 220px"><button class="btn" data-act="condividi" data-url="' + esc(linkLettura()) + '">Condividi</button></div>';
   } else {
     h += '<p>Stai guardando la bacheca in <b>sola lettura</b>. Per cambiarla chiedi il link di modifica a chi l\'ha creata.</p>' +
-      '<div class="row"><button class="btn" data-act="condividi" data-url="' + esc(linkLettura()) + '">Manda questo link</button></div>';
+      '<div class="row"><button class="btn" data-act="condividi" data-url="' + esc(linkLettura()) + '">Condividi questo link</button></div>';
   }
   h += '</section>';
   if (!mod) return h;
@@ -510,8 +510,9 @@ function vistaEmail() {
         : '<button class="btn danger piccolo" data-act="email-togli" data-id="' + esc(d.id) + '">Togli</button>') +
       sceltaFiltro('email', d.id, d.filtro) + '</div>';
   }
-  h += '<div class="riga-ed"><label class="field">Indirizzo email<input type="email" id="emailNuova" autocomplete="email" inputmode="email" placeholder="nome@esempio.it"></label>' +
-    '<label class="field">Nome (facoltativo)<input type="text" id="emailNome" placeholder="es. Mamma"></label>' +
+  h += '<div class="riga-ed"><label class="field">Indirizzo email<input type="email" id="emailNuova" autocomplete="email" inputmode="email" placeholder="nome@esempio.it" value="' + esc(S.ui.emailBozza?.indirizzo || '') + '"></label>' +
+    '<label class="field">Nome (facoltativo)<input type="text" id="emailNome" placeholder="es. Mamma" value="' + esc(S.ui.emailBozza?.nome || '') + '"></label>' +
+    sceltaFiltro('email-nuovo', 'nuovo', S.ui.emailFiltroNuovo ?? null) +
     '<button class="btn primary" data-act="email-aggiungi">Aggiungi</button></div>';
 
   const b = e.bozza;
@@ -705,6 +706,15 @@ export const AZIONI = {
   },
   async 'filtro'(el) {
     const canale = el.dataset.canale;
+    if (canale === 'email-nuovo') { // indirizzo non ancora aggiunto: la scelta vale per quando premi "Aggiungi"
+      S.ui.emailBozza = { indirizzo: document.getElementById('emailNuova')?.value || '', nome: document.getElementById('emailNome')?.value || '' };
+      const g = el.dataset.g, f0 = S.ui.emailFiltroNuovo;
+      let f = g === '*' ? null : (f0 ? [...f0] : []);
+      if (f) f = f.includes(g) ? f.filter((y) => y !== g) : [...f, g];
+      S.ui.emailFiltroNuovo = f && f.length ? f : null;
+      render();
+      return;
+    }
     const x = elencoDi(canale).find((y) => chiaveDi(canale, y) === el.dataset.id);
     if (!x) return;
     const g = el.dataset.g;
@@ -750,7 +760,8 @@ export const AZIONI = {
     if (!indirizzo) { toast('Scrivi un indirizzo email.'); return; }
     el.disabled = true;
     try {
-      const d = await api.emailAggiungi(S.token, indirizzo, nome);
+      const d = await api.emailAggiungi(S.token, indirizzo, nome, S.ui.emailFiltroNuovo ?? null);
+      S.ui.emailFiltroNuovo = null; S.ui.emailBozza = null;
       toast(d.stato === 'attivo' ? 'Questo indirizzo riceve già i promemoria.' : 'Ho mandato a ' + d.indirizzo + ' un\'email per confermare.', 5000);
     } catch (e) { toast(e.message); }
     caricaEmail();
