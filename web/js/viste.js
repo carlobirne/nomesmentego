@@ -329,7 +329,8 @@ export function vistaCalendario() {
 export function vistaCondividi() {
   const d = S.dati;
   const mod = S.permesso === 'modifica';
-  let h = '<section class="card"><h2>' + icona('calendario', 'titolo') + 'Calendario</h2>' +
+  let h = '<p class="notice small" style="margin:0 0 14px"><b>Quanto sono puntuali gli avvisi?</b> Notifiche dell\'app, Telegram e mail partono all\'orario impostato e arrivano di solito <b>entro un paio di minuti</b> (il server controlla ogni minuto, poi c\'è il tempo di consegna). Il <b>calendario</b> invece suona puntuale, ma le modifiche fatte qui ci mettono qualche ora a comparire, soprattutto su Google.</p>';
+  h += '<section class="card"><h2>' + icona('calendario', 'titolo') + 'Calendario</h2>' +
     '<p>Aggiungi la bacheca al calendario del telefono <b>una volta sola</b>: da lì in poi gli avvisi arrivano come quelli degli appuntamenti, e le modifiche fatte qui si aggiornano da sole.</p>' +
     '<div class="stack">' +
     '<a class="btn primary big" href="' + esc(linkWebcal()) + '">' + marchioCalendario('apple') + 'Apple Calendar</a>' +
