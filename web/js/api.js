@@ -39,7 +39,7 @@ export const api = {
   pushFiltro: (token, id, filtro) => chiama('PUT', '/api/b/' + token + '/push/' + id, { filtro }),
   pushTogli: (token, id) => chiama('DELETE', '/api/b/' + token + '/push/' + id),
   email: (token) => chiama('GET', '/api/b/' + token + '/email'),
-  emailAggiungi: (token, indirizzo, nome) => chiama('POST', '/api/b/' + token + '/email', { indirizzo, nome }),
+  emailAggiungi: (token, indirizzo, nome, filtro = null) => chiama('POST', '/api/b/' + token + '/email', { indirizzo, nome, filtro }),
   emailModello: (token, oggetto, corpo) => chiama('PUT', '/api/b/' + token + '/email/modello', { oggetto, corpo }),
   emailAnteprima: (token, oggetto, corpo) => chiama('POST', '/api/b/' + token + '/email/anteprima', { oggetto, corpo }),
   emailProva: (token) => chiama('POST', '/api/b/' + token + '/email/prova'),

@@ -195,3 +195,23 @@ test('email: senza servizio configurato, segnaposto e client Brevo/Resend', asyn
   const ko = creaPosta({ BREVO_API_KEY: 'k', EMAIL_MITTENTE: 'io@x.it' }, async () => new Response('{"message":"no"}', { status: 401 }));
   await assert.rejects(ko.invia({ a: 'y@z.it', oggetto: 'O', testo: 'T', html: 'H' }), /401/);
 });
+
+test('email: i gruppi da ricevere si scelgono già quando si aggiunge l\'indirizzo', async () => {
+  const mandate = [];
+  const posta = { servizio: 'prova', invia: async (m) => { mandate.push(m); } };
+  const a = await ambiente({ posta });
+  const d = await a.chiama('POST', '/api/b/' + a.modifica + '/email', { indirizzo: 'papa@example.com', filtro: ['auto', 'inesistente'] });
+  assert.equal(d.stato, 201);
+  assert.deepEqual(d.corpo.filtro, ['auto']);
+  const tutto = await a.chiama('POST', '/api/b/' + a.modifica + '/email', { indirizzo: 'nonna@example.com', filtro: null });
+  assert.equal(tutto.corpo.filtro, null);
+  const elenco = (await a.chiama('GET', '/api/b/' + a.modifica + '/email')).corpo.destinatari;
+  assert.deepEqual(elenco.map((x) => [x.indirizzo, x.filtro]), [['papa@example.com', ['auto']], ['nonna@example.com', null]]);
+  // solo il bollo (gruppo Auto) arriva a papà, la medicina no
+  for (const r of a.archivio.notificheRighe) { r.stato = 'attivo'; r.ultimo = '2030-01-01T07:55'; }
+  mandate.length = 0;
+  await inviaEmail({ archivio: a.archivio, posta, adesso: new Date('2030-01-01T07:10:00Z') });
+  const a_papa = mandate.filter((m) => m.a === 'papa@example.com').map((m) => m.oggetto + ' ' + m.testo);
+  assert.ok(a_papa.length >= 1 && a_papa.every((t) => /Bollo/.test(t) && !/pastiglia/.test(t)));
+  assert.ok(mandate.some((m) => m.a === 'nonna@example.com' && /pastiglia/.test(m.oggetto + m.testo)));
+});
